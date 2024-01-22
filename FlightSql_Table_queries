@@ -1,0 +1,67 @@
+create database flights
+
+use flights
+
+create table user(
+id INT not null Auto_Increment,
+First_Name Varchar(20),
+Last_Name Varchar(20),
+Email Varchar(20),
+Password Varchar(256),
+Primary Key (id),
+Unique Key (Email)
+)
+
+select * from user
+
+Create Table Flight(
+ID INT NOT NULL AUTO_INCREMENT,	
+FLIGHT_NUMBER VARCHAR(20) NOT NULL,
+OPERATING_AIRLINES VARCHAR(20) NOT NULL,
+DEPARTURE_CITY VARCHAR(20) NOT NULL,
+ARRIVAL_CITY VARCHAR(20) NOT NULL,
+DATE_OF_DEPARTURE DATE NOT NULL,
+ESTIMATED_DEPARTURE_TIME TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY (ID)
+)
+select * from Flight
+
+insert into flight values(1,'AA1','American Airlines','Aus',
+'NYC',STR_TO_DATE('02-12-2022', '%m-%d-%Y'),'2022-02-12 10:14:07')
+
+insert into flight values(5,'AA1','American Airlines','Aus',
+'NYC',STR_TO_DATE('02-12-2022', '%m-%d-%Y'),'2022-02-12 10:14:07')
+
+insert into flight values(2,'AA1','Air India','IND',
+'NYC',STR_TO_DATE('03-12-2022', '%m-%d-%Y'),'2022-03-12 11:14:07')
+
+insert into flight values(3,'AA2','Vistara','IND',
+'NYC',STR_TO_DATE('02-13-2022', '%m-%d-%Y'),'2022-02-13 11:14:07')
+
+insert into flight values(4,'AA3','Indigo','IND',
+'NYC',STR_TO_DATE('02-14-2022', '%m-%d-%Y'),'2022-02-14 12:14:07')
+
+CREATE TABLE PASSENGER(
+ID INT NOT NULL AUTO_INCREMENT,
+FIRST_NAME VARCHAR(256),
+LAST_NAME VARCHAR(256),
+MIDDLE_NAME VARCHAR(256),
+EMAIL VARCHAR(256),
+PHONE VARCHAR(10),
+PRIMARY KEY(ID)
+)
+select * from PASSENGER
+
+CREATE TABLE RESERVATION(
+ID INT NOT NULL AUTO_INCREMENT,
+CHECKED_IN TINYINT(1),
+NUMBER_OF_BAGS INT,
+PASSENGER_ID INT,
+FLIGHT_ID INT,
+CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+PRIMARY KEY(ID),
+FOREIGN KEY(PASSENGER_ID) REFERENCES PASSENGER(ID) ON DELETE CASCADE,
+FOREIGN KEY(FLIGHT_ID) REFERENCES FLIGHT(ID)
+)
+
+select * from RESERVATION
