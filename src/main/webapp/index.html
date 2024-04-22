@@ -1,13 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="ISO-8859-1">
-<title>Home Page</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Flight Reservation</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			background-image:url('flight.jpg');
+			background-size: cover;
+			background-position: center;
+			height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.container {
+			background-color: rgba(255, 255, 255, 0.8);
+			padding: 20px;
+			border-radius: 10px;
+			text-align: center;
+		}
+
+		h1 {
+			margin-bottom: 20px;
+		}
+
+		.btn {
+			padding: 10px 20px;
+			background-color: #007bff;
+			color: #fff;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+			text-decoration: none;
+		}
+
+		.btn:hover {
+			background-color: #0056b3;
+		}
+	</style>
 </head>
 <body>
-	<pre>
-		<a href="showLoginPage">Click here to login</a>
-		<a href="showReg">click here to create new account</a>
-	</pre>
+<div class="container">
+	<h1>Welcome to Flight Reservation</h1>
+	<a href="showLoginPage" class="btn">Login</a>
+	<a href="showReg" class="btn">Create Account</a>
+</div>
 </body>
 </html>
