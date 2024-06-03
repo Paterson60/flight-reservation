@@ -1,1 +1,155 @@
+product specification
+
+package com.service.productcatalogue.specification;
+
+import com.service.productcatalogue.entity.Product;
+import org.springframework.data.jpa.domain.Specification;
+
+public class ProductSpecification {
+
+    public static Specification<Product> hasKeyword(String keyword) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.or(
+                criteriaBuilder.like(root.get("name"), "%" + keyword + "%"),
+                criteriaBuilder.like(root.get("description"), "%" + keyword + "%")
+        );
+    }
+
+    public static Specification<Product> hasCategory(String category) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("category"), category);
+    }
+
+    public static Specification<Product> hasBrand(String brand) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("brand"), brand);
+    }
+
+    public static Specification<Product> hasPriceBetween(Double minPrice, Double maxPrice) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.between(root.get("price").get("amount"), minPrice, maxPrice);
+    }
+}
+
+
+service 
+
+package com.service.productcatalogue.service.impl;
+
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.dto.ProductSearchDto;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.mapper.ProductMapper;
+import com.service.productcatalogue.repository.ProductRepository;
+import com.service.productcatalogue.service.IProductService;
+import com.service.productcatalogue.specification.ProductSpecification;
+import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@AllArgsConstructor
+public class ProductServiceImpl implements IProductService {
+
+    private ProductRepository productRepository;
+
+    @Override
+    public void addProduct(ProductDto productDto) {
+        // existing code
+    }
+
+    @Override
+    public ProductDto fetchProduct(String sku) {
+        // existing code
+    }
+
+    @Override
+    public boolean updateProduct(ProductDto productDto) {
+        // existing code
+    }
+
+    @Override
+    public boolean deleteProduct(String sku) {
+        // existing code
+    }
+
+    public List<ProductDto> searchProducts(ProductSearchDto searchDto) {
+        Specification<Product> specification = Specification.where(null);
+
+        if (searchDto.getKeyword() != null) {
+            specification = specification.and(ProductSpecification.hasKeyword(searchDto.getKeyword()));
+        }
+        if (searchDto.getCategory() != null) {
+            specification = specification.and(ProductSpecification.hasCategory(searchDto.getCategory()));
+        }
+        if (searchDto.getBrand() != null) {
+            specification = specification.and(ProductSpecification.hasBrand(searchDto.getBrand()));
+        }
+        if (searchDto.getMinPrice() != null && searchDto.getMaxPrice() != null) {
+            specification = specification.and(ProductSpecification.hasPriceBetween(searchDto.getMinPrice(), searchDto.getMaxPrice()));
+        }
+
+        Sort sort = Sort.by(Sort.Direction.ASC, searchDto.getSortBy());
+        if ("desc".equalsIgnoreCase(searchDto.getSortOrder())) {
+            sort = Sort.by(Sort.Direction.DESC, searchDto.getSortBy());
+        }
+
+        List<Product> products = productRepository.findAll(specification, sort);
+
+        return products.stream()
+                .map(product -> ProductMapper.mapToProductDto(product, new ProductDto()))
+                .collect(Collectors.toList());
+    }
+}
+
+
+controller 
+package com.service.productcatalogue.controller;
+
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.dto.ProductSearchDto;
+import com.service.productcatalogue.dto.ResponseDto;
+import com.service.productcatalogue.service.IProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Tag(
+        name = "CRUD Rest APIs For Product In Product Catalogue Service",
+        description = "CRUD Rest APIs in Product"
+)
+@RestController
+@RequestMapping(path = "/api", produces = {MediaType.APPLICATION_JSON_VALUE})
+@AllArgsConstructor
+@Validated
+public class ProductController {
+
+    private IProductService iProductService;
+
+    @Operation(
+            summary = "Search Products Rest API",
+            description = "Rest API to search products with filters and sorting"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "HTTP Status OK"
+    )
+    @PostMapping("/searchProducts")
+    public ResponseEntity<List<ProductDto>> searchProducts(@RequestBody ProductSearchDto searchDto) {
+        List<ProductDto> products = iProductService.searchProducts(searchDto);
+        return ResponseEntity.status(HttpStatus.OK).body(products);
+    }
+
+    // existing endpoints
+}
+
 
