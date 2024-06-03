@@ -153,3 +153,56 @@ public class ProductController {
 }
 
 
+service without functional
+
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.dto.SearchCriteriaDto;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.mapper.ProductMapper;
+import com.service.productcatalogue.repository.ProductRepository;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@AllArgsConstructor
+public class ProductService implements IProductService {
+
+    private final ProductRepository productRepository;
+
+    @Override
+    public List<ProductDto> searchProducts(SearchCriteriaDto searchCriteriaDto) {
+        List<Product> products = productRepository.findAll();
+        List<ProductDto> matchingProducts = new ArrayList<>();
+
+        for (Product product : products) {
+            if (matchesCriteria(product, searchCriteriaDto)) {
+                matchingProducts.add(ProductMapper.mapToProductDto(product, new ProductDto()));
+            }
+        }
+
+        return matchingProducts;
+    }
+
+    private boolean matchesCriteria(Product product, SearchCriteriaDto searchCriteriaDto) {
+        if (searchCriteriaDto.getName() != null && !product.getName().equalsIgnoreCase(searchCriteriaDto.getName())) {
+            return false;
+        }
+
+        if (searchCriteriaDto.getCategory() != null && !product.getCategory().equalsIgnoreCase(searchCriteriaDto.getCategory())) {
+            return false;
+        }
+
+        if (searchCriteriaDto.getMinPrice() != null && product.getPrice() < searchCriteriaDto.getMinPrice()) {
+            return false;
+        }
+
+        if (searchCriteriaDto.getMaxPrice() != null && product.getPrice() > searchCriteriaDto.getMaxPrice()) {
+            return false;
+        }
+
+        return true;
+    }
+}
