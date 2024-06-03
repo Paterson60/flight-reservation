@@ -220,3 +220,37 @@ controller 2
         List<ProductDto> products = iProductService.searchProducts(name, category, minPrice, maxPrice);
         return ResponseEntity.status(HttpStatus.OK).body(products);
     }
+
+
+
+json data for searchProducts 
+[
+    {
+        "id": 1,
+        "sku": "12345",
+        "name": "Laptop",
+        "category": "Electronics",
+        "price": {
+            "amount": 1200.00,
+            "currency": "USD"
+        },
+        "description": "A high-end gaming laptop.",
+        "availableQuantity": 10,
+        "dateCreated": "2023-01-01T12:00:00Z",
+        "dateUpdated": "2023-05-01T12:00:00Z"
+    },
+    {
+        "id": 2,
+        "sku": "67890",
+        "name": "Laptop",
+        "category": "Electronics",
+        "price": {
+            "amount": 900.00,
+            "currency": "USD"
+        },
+        "description": "A mid-range business laptop.",
+        "availableQuantity": 20,
+        "dateCreated": "2023-02-01T12:00:00Z",
+        "dateUpdated": "2023-06-01T12:00:00Z"
+    }
+]
