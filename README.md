@@ -44,6 +44,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 }
 
 service layer
+
 package com.service.productcatalogue.service.impl;
 
 import com.service.productcatalogue.dto.ProductDto;
