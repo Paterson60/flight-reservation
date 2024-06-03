@@ -206,3 +206,17 @@ public class ProductService implements IProductService {
         return true;
     }
 }
+
+
+controller 2
+
+@GetMapping("/searchProducts")
+    public ResponseEntity<List<ProductDto>> searchProducts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
+        
+        List<ProductDto> products = iProductService.searchProducts(name, category, minPrice, maxPrice);
+        return ResponseEntity.status(HttpStatus.OK).body(products);
+    }
