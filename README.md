@@ -758,4 +758,48 @@ public class ProductController {
 
 }
 
+Search
+
+ @PostMapping("/searchProducts")
+    public ResponseEntity<List<ProductDto>> searchProducts(@Valid @RequestBody ProductSearchCriteriaDto searchCriteria) {
+        List<ProductDto> matchingProducts = iProductService.searchProducts(searchCriteria);
+        if(matchingProducts.isEmpty()){
+            ResponseEntity<List<ProductDto>> response = ResponseEntity
+                    .status(HttpStatus.EXPECTATION_FAILED).body((List<ProductDto>) new ResponseDto(ProductConstants.STATUS_417, ProductConstants.MESSAGE_417_DELETE));
+            return response;
+
+        }else{
+            return ResponseEntity.status(HttpStatus.OK).body(matchingProducts);
+        }
+
+    }
+
+    resposne dto
+
+    package com.service.productcatalogue.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data@AllArgsConstructor
+@Schema(
+        name = "Response",
+        description = "Schema to hold successful response information"
+)
+public class ResponseDto {
+
+    @Schema(
+            description = "Status code in the response"
+    )
+    private String statusCode;
+
+    @Schema(
+            description = "Status code in the response"
+    )
+    private String statusMsg;
+}
+
+error message 
+"class com.service.productcatalogue.dto.ResponseDto cannot be cast to class java.util.List (com.service.productcatalogue.dto.ResponseDto is in unnamed module of loader 'app'; java.util.List is in module java.base of loader 'bootstrap')",
 
