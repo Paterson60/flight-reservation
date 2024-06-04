@@ -270,3 +270,139 @@ json data for searchProducts
     "bundleDeals": "charger",
     "productVariations": "watch version 2"
   }
+
+
+dto
+
+package com.service.productcatalogue.dto;
+
+import lombok.Data;
+
+@Data
+public class SearchCriteriaDto {
+    private String name;
+    private String category;
+    private String description;
+    private String image;
+    private String specification;
+    private String sku;
+    private String brand;
+    private ProductAssociationDto productAssociationDto;
+}
+
+service 
+package com.service.productcatalogue.service.impl;
+
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.dto.SearchCriteriaDto;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.mapper.ProductMapper;
+import com.service.productcatalogue.repository.ProductRepository;
+import com.service.productcatalogue.service.IProductService;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@AllArgsConstructor
+public class ProductServiceImpl implements IProductService {
+
+    private final ProductRepository productRepository;
+
+    @Override
+    public List<ProductDto> searchProducts(SearchCriteriaDto searchCriteria) {
+        List<Product> products = productRepository.findAll();
+        List<ProductDto> matchingProducts = new ArrayList<>();
+
+        for (Product product : products) {
+            if (matchesCriteria(product, searchCriteria)) {
+                matchingProducts.add(ProductMapper.mapToProductDto(product, new ProductDto()));
+            }
+        }
+
+        return matchingProducts;
+    }
+
+    private boolean matchesCriteria(Product product, SearchCriteriaDto criteria) {
+        if (criteria.getName() != null && !product.getName().equalsIgnoreCase(criteria.getName())) {
+            return false;
+        }
+        if (criteria.getCategory() != null && !product.getCategory().equalsIgnoreCase(criteria.getCategory())) {
+            return false;
+        }
+        if (criteria.getDescription() != null && !product.getDescription().equalsIgnoreCase(criteria.getDescription())) {
+            return false;
+        }
+        if (criteria.getImage() != null && !product.getImage().equalsIgnoreCase(criteria.getImage())) {
+            return false;
+        }
+        if (criteria.getSpecification() != null && !product.getSpecification().equalsIgnoreCase(criteria.getSpecification())) {
+            return false;
+        }
+        if (criteria.getSku() != null && !product.getSku().equalsIgnoreCase(criteria.getSku())) {
+            return false;
+        }
+        if (criteria.getBrand() != null && !product.getBrand().equalsIgnoreCase(criteria.getBrand())) {
+            return false;
+        }
+        if (criteria.getProductAssociationDto() != null) {
+            if (criteria.getProductAssociationDto().getSku() != null && !product.getProductAssociation().getSku().equalsIgnoreCase(criteria.getProductAssociationDto().getSku())) {
+                return false;
+            }
+            if (criteria.getProductAssociationDto().getRelatedProducts() != null && !product.getProductAssociation().getRelatedProducts().equalsIgnoreCase(criteria.getProductAssociationDto().getRelatedProducts())) {
+                return false;
+            }
+            if (criteria.getProductAssociationDto().getBundleDeals() != null && !product.getProductAssociation().getBundleDeals().equalsIgnoreCase(criteria.getProductAssociationDto().getBundleDeals())) {
+                return false;
+            }
+            if (criteria.getProductAssociationDto().getProductVariations() != null && !product.getProductAssociation().getProductVariations().equalsIgnoreCase(criteria.getProductAssociationDto().getProductVariations())) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+controller 
+package com.service.productcatalogue.controller;
+
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.dto.ResponseDto;
+import com.service.productcatalogue.dto.SearchCriteriaDto;
+import com.service.productcatalogue.service.IProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api")
+@AllArgsConstructor
+@Validated
+public class ProductController {
+
+    private final IProductService productService;
+
+    @Operation(
+            summary = "Search Products",
+            description = "Search for products based on various criteria"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved matching products"
+    )
+    @PostMapping("/searchProducts")
+    public ResponseEntity<List<ProductDto>> searchProducts(@RequestBody SearchCriteriaDto searchCriteria) {
+        List<ProductDto> matchingProducts = productService.searchProducts(searchCriteria);
+        return ResponseEntity.status(HttpStatus.OK).body(matchingProducts);
+    }
+
+    // Other existing endpoints...
+}
