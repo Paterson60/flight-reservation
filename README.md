@@ -268,6 +268,7 @@ public class ProductController {
     }
 }
 
+
 Json
 {
   "name": "Airpod",
@@ -277,3 +278,484 @@ Json
   "sortBy": "name",
   "sortDirection": "asc"
 }
+
+
+Entity Price
+
+package com.service.productcatalogue.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.*;
+
+@Entity
+@Getter@Setter@ToString@AllArgsConstructor@NoArgsConstructor
+public class Price {
+@Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long priceId;
+private Long amount;
+
+repository
+
+package com.service.productcatalogue.repository;
+
+import com.service.productcatalogue.entity.Price;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface PriceRepository extends JpaRepository<Price,Long> {
+}
+
+iproductservice
+
+package com.service.productcatalogue.service;
+
+import com.service.productcatalogue.dto.*;
+import com.service.productcatalogue.entity.Product;
+
+import java.util.List;
+
+public interface IProductService {
+
+    /**
+     *
+     * @param addAllProductDetailsDto - AddAllProductDetailsDto Object
+     */
+    void addProduct(AddAllProductDetailsDto addAllProductDetailsDto);
+
+
+    /**
+     *
+     * @param sku - Input sku
+     */
+    ProductDto fetchProduct(String sku);
+
+    public List<Product> fetchAllProducts();
+
+    boolean updateProduct(ProductDto productDto);
+
+    boolean deleteProduct(String sku);
+
+    List<ProductDto> searchProducts(ProductSearchCriteriaDto searchDto);
+
+    //List<ProductDto> searchProducts(String name,String category,Double minPrice,Double maxPrice);
+
+}
+
+ServiceImpl
+package com.service.productcatalogue.service.impl;
+
+import com.service.productcatalogue.dto.AddAllProductDetailsDto;
+import com.service.productcatalogue.dto.ProductAssociationDto;
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.entity.Price;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.entity.ProductAssociation;
+import com.service.productcatalogue.exception.ProductExistsException;
+import com.service.productcatalogue.exception.ResourceNotFoundException;
+import com.service.productcatalogue.mapper.AllProductMapperProductMapper;
+import com.service.productcatalogue.mapper.ProductAssociationMapper;
+import com.service.productcatalogue.mapper.ProductMapper;
+import com.service.productcatalogue.repository.PriceRepository;
+import com.service.productcatalogue.repository.ProductAssociationRepository;
+import com.service.productcatalogue.repository.ProductRepository;
+import com.service.productcatalogue.service.IProductService;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+
+import com.service.productcatalogue.dto.ProductSearchCriteriaDto;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import java.util.Optional;
+
+@Service
+@AllArgsConstructor
+public class ProductServiceImpl implements IProductService {
+
+    private ProductRepository productRepository;
+
+    private PriceRepository priceRepository;
+
+    private ProductAssociationRepository productAssociationRepository;
+
+    @Override
+    public void addProduct(AddAllProductDetailsDto addAllProductDetailsDto) {
+        Product product = AllProductMapperProductMapper.mapToProduct(addAllProductDetailsDto, new Product());
+
+        ProductAssociation newProductAssociation = new ProductAssociation();
+        newProductAssociation.setSku(addAllProductDetailsDto.getSku());
+        newProductAssociation.setRelatedProducts(addAllProductDetailsDto.getRelatedProducts());
+        newProductAssociation.setBundleDeals(addAllProductDetailsDto.getBundleDeals());
+        newProductAssociation.setProductVariations(addAllProductDetailsDto.getProductVariations());
+        productAssociationRepository.save(newProductAssociation);
+
+        Price price = new Price();
+        price.setAmount(addAllProductDetailsDto.getAmount());
+        priceRepository.save(price);
+
+        String sku = addAllProductDetailsDto.getSku();
+        Optional<Product> optionalSku = productRepository.findBySku(sku);
+        if(optionalSku.isPresent()){
+            throw new ProductExistsException("Product Already Exists " + addAllProductDetailsDto.getSku());
+        }
+        product.setProductAssociation(newProductAssociation);
+        product.setPrice(price);
+        productRepository.save(product);
+//        productAssociationRepository.save(productAssociation(savedProduct));
+
+    }
+
+//    private ProductAssociation productAssociation(Product product){
+//        ProductAssociation newProductAssociation = new ProductAssociation();
+//        newProductAssociation.setSku(product.getSku());
+//        newProductAssociation.setRelatedProducts(product.getCategory());
+//        newProductAssociation.setBundleDeals(product.getSpecification());
+//        newProductAssociation.setProductVariations(product.getDescription());
+//        return newProductAssociation;
+//    }
+
+//    private Price price(Product product){
+//        Price newPrice = new Price();
+//        newPrice.setAmount(product.getA);
+//    }
+
+
+    /**
+     * @param sku - Input sku
+     */
+    @Override
+    public ProductDto fetchProduct(String sku) {
+       Product product = productRepository.findBySku(sku).orElseThrow(
+                ()-> new ResourceNotFoundException("Product","Sku", sku)
+        );
+        ProductAssociation productAssociation = productAssociationRepository.findBySku(product.getSku()).orElseThrow(
+                ()-> new ResourceNotFoundException("relatedProduct","Sku", sku)
+        );
+        ProductDto productDto = ProductMapper.mapToProductDto(product, new ProductDto());
+        productDto.setProductAssociationDto(ProductAssociationMapper.mapToProductAssociationDto(productAssociation, new ProductAssociationDto()));
+        return productDto;
+    }
+
+    @Override
+    public List<Product> fetchAllProducts() {
+        return productRepository.findAll();
+    }
+
+
+    @Override
+    public boolean updateProduct(ProductDto productDto) {
+        boolean isUpdated =  false;
+        ProductAssociationDto productAssociationDto = productDto.getProductAssociationDto();
+        if(productAssociationDto != null){
+            ProductAssociation productAssociation = productAssociationRepository.findBySku(productAssociationDto.getSku()).orElseThrow(
+                    ()-> new ResourceNotFoundException("relatedProduct","Sku",productAssociationDto.getSku())
+            );
+
+            ProductAssociationMapper.mapToProductAssociation(productAssociationDto, productAssociation);
+            productAssociation = productAssociationRepository.save(productAssociation);
+
+            Long productId= productAssociation.getAssociationId();
+            Product product = productRepository.findById(productId).orElseThrow(
+                    () -> new ResourceNotFoundException("Product","ProductId",productId.toString())
+            );
+            ProductMapper.mapToProduct(productDto,product);
+            productRepository.save(product);
+            isUpdated = true;
+        }
+        return isUpdated;
+    }
+
+    @Override
+    public boolean deleteProduct(String sku) {
+        Product product = productRepository.findBySku(sku).orElseThrow(
+                () -> new ResourceNotFoundException("Product","sku",sku)
+        );
+        productAssociationRepository.deleteById(product.getProductAssociation().getAssociationId());
+        productRepository.deleteById(product.getProductId());
+        return true;
+    }
+
+    @Override
+    public List<ProductDto> searchProducts(ProductSearchCriteriaDto productSearchCriteriaDto) {
+        Specification<Product> spec = Specification.where(null);
+
+        if (productSearchCriteriaDto.getName() != null && !productSearchCriteriaDto.getName().isEmpty()) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.like(root.get("name"), "%" + productSearchCriteriaDto.getName() + "%"));
+        }
+
+        if (productSearchCriteriaDto.getCategory() != null && !productSearchCriteriaDto.getCategory().isEmpty()) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("category"), productSearchCriteriaDto.getCategory()));
+        }
+
+        if (productSearchCriteriaDto.getMinPrice() != null) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("price").get("amount"), productSearchCriteriaDto.getMinPrice()));
+        }
+
+        if (productSearchCriteriaDto.getMaxPrice() != null) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("price").get("amount"), productSearchCriteriaDto.getMaxPrice()));
+        }
+
+        Sort sort = Sort.unsorted();
+        if (productSearchCriteriaDto.getSortBy() != null && productSearchCriteriaDto.getSortDirection() != null) {
+            sort = Sort.by(Sort.Direction.fromString(productSearchCriteriaDto.getSortDirection()), productSearchCriteriaDto.getSortBy());
+        }
+
+        List<Product> products = productRepository.findAll(spec, sort);
+        return products.stream()
+                .map(product -> ProductMapper.mapToProductDto(product, new ProductDto()))
+                .collect(Collectors.toList());
+    }
+
+//    @Override
+//    public List<ProductDto> searchProducts(String name,String category,Double minPrice,Double maxPrice) {
+//        List<Product> products = productRepository.findAll();
+//        List<ProductDto> matchingProducts = new ArrayList<>();
+//
+//        for (Product product : products) {
+//            if (matchesCriteria(product, new ProductSearchCriteriaDto())) {
+//                matchingProducts.add(ProductMapper.mapToProductDto(product, new ProductDto()));
+//            }
+//        }
+//
+//        return matchingProducts;
+//    }
+//
+//    private boolean matchesCriteria(Product product, ProductSearchCriteriaDto searchCriteriaDto) {
+//        if (searchCriteriaDto.getName() != null && !product.getName().equalsIgnoreCase(searchCriteriaDto.getName())) {
+//            return false;
+//        }
+//
+//        if (searchCriteriaDto.getCategory() != null && !product.getCategory().equalsIgnoreCase(searchCriteriaDto.getCategory())) {
+//            return false;
+//        }
+//
+//        if (searchCriteriaDto.getMinPrice() != null && product.getPrice().getAmount() < searchCriteriaDto.getMinPrice()) {
+//            return false;
+//        }
+//
+//        if (searchCriteriaDto.getMaxPrice() != null && product.getPrice().getAmount() > searchCriteriaDto.getMaxPrice()) {
+//            return false;
+//        }
+//
+//        return true;
+//    }
+
+
+}
+
+DTO
+
+package com.service.productcatalogue.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+
+@Data
+@Schema(
+        name = "Product Pricing",
+        description = "Schema to holds the details of Associated Product Prices"
+)
+public class PriceDto {
+
+    @NotEmpty(message = "Amount cannot be empty or null")
+    @Schema(
+            description = "Holds the details of Associated each Product price"
+    )
+    private Long amount;
+}
+
+Controller
+
+package com.service.productcatalogue.controller;
+
+import com.service.productcatalogue.constants.ProductConstants;
+import com.service.productcatalogue.dto.*;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.service.IProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.AllArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Tag(
+        name = "CRUD Rest APIs For Product In Product Catalogue Service",
+        description = "CRUD Rest APIs in Product"
+)
+@RestController
+@RequestMapping(path="/api", produces = {MediaType.APPLICATION_JSON_VALUE})
+@AllArgsConstructor
+@Validated
+public class ProductController {
+
+    private IProductService iProductService;
+
+    @Operation(
+            summary = "Add Product Rest API",
+            description = "Rest API to add a new Product in Product Catalogue Service"
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "HTTP Status Product Added"
+    )
+    @PostMapping("/addProduct")
+    public ResponseEntity<ResponseDto> addProduct(@Valid @RequestBody AddAllProductDetailsDto addAllProductDetailsDto){
+        iProductService.addProduct(addAllProductDetailsDto);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(new ResponseDto(ProductConstants.STATUS_201,ProductConstants.MESSAGE_201));
+    }
+
+    @Operation(
+            summary = "Fetch Product Details Rest API",
+            description = "Rest API to fetch  Product Details"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "HTTP Status Ok"
+    )
+    @GetMapping("/fetchProduct")
+    public ResponseEntity<ProductDto> fetchProductDetails(@RequestParam
+                                                              @NotEmpty(message = "SKU cannot be empty")
+                                                              String sku){
+        ProductDto productDto = iProductService.fetchProduct(sku);
+        return ResponseEntity.status(HttpStatus.OK).body(productDto);
+    }
+
+    @Operation(
+            summary = "Fetch All Product Details Rest API",
+            description = "Rest API to fetch All Product Details"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "HTTP Status Ok"
+    )
+    @GetMapping("/fetchAllProducts")
+    public List<Product> fetchAllProducts(){
+        return iProductService.fetchAllProducts();
+    }
+
+    @Operation(
+            summary = "Update Product Details Rest API",
+            description = "Rest API to update Product Details"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "HTTP Status OK"
+            ),
+            @ApiResponse(
+                    responseCode = "417",
+                    description = "Expectation Failed"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "HTTP Status Internal Server Error",
+                    content = @Content(
+                            schema = @Schema(
+                                    implementation = ErrorResponseDto.class
+                            )
+                    )
+            )
+    })
+    @PutMapping("/updateProduct")
+    public ResponseEntity<ResponseDto> updateProduct(@Valid @RequestBody ProductDto productDto){
+        boolean isUpdated = iProductService.updateProduct(productDto);
+        if(isUpdated){
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(new ResponseDto(ProductConstants.STATUS_200, ProductConstants.MESSAGE_200));
+        }else{
+            return ResponseEntity
+                    .status(HttpStatus.EXPECTATION_FAILED)
+                    .body(new ResponseDto(ProductConstants.STATUS_417,ProductConstants.MESSAGE_417_UPDATE));
+        }
+    }
+
+    @Operation(
+            summary = "Delete Product Rest API",
+            description = "Rest API to Delete a Product"
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "HTTP Status OK"
+            ),
+            @ApiResponse(
+                    responseCode = "417",
+                    description = "Expectation Failed"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "HTTP Status Internal Server Error"
+            )
+    })
+    @DeleteMapping("/deleteProduct")
+    public ResponseEntity<ResponseDto> deleteProduct(@RequestParam
+                                                         @NotEmpty(message = "SKU cannot be empty")
+                                                         String sku){
+        boolean isDeleted = iProductService.deleteProduct(sku);
+        if (isDeleted){
+            return ResponseEntity
+                    .status(HttpStatus.OK)
+                    .body(new ResponseDto(ProductConstants.STATUS_200, ProductConstants.MESSAGE_200));
+        }else{
+            return ResponseEntity
+                    .status(HttpStatus.EXPECTATION_FAILED)
+                    .body(new ResponseDto(ProductConstants.STATUS_417, ProductConstants.MESSAGE_417_DELETE));
+        }
+    }
+
+    @PostMapping("/searchProducts")
+    public ResponseEntity<List<ProductDto>> searchProducts(@Valid @RequestBody ProductSearchCriteriaDto productSearchCriteriaDto) {
+        List<ProductDto> products = iProductService.searchProducts(productSearchCriteriaDto);
+        return ResponseEntity.status(HttpStatus.OK).body(products);
+    }
+
+
+//    @GetMapping("/searchProducts")
+//    public ResponseEntity<List<ProductDto>> searchProducts(
+//            @RequestParam(required = false) String name,
+//            @RequestParam(required = false) String category,
+//            @RequestParam(required = false) Double minPrice,
+//            @RequestParam(required = false) Double maxPrice) {
+//
+//        List<ProductDto> products = iProductService.searchProducts(name, category, minPrice, maxPrice);
+//        return ResponseEntity.status(HttpStatus.OK).body(products);
+//    }
+
+
+}
+
+
