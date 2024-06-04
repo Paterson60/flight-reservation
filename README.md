@@ -803,3 +803,5 @@ public class ResponseDto {
 error message 
 "class com.service.productcatalogue.dto.ResponseDto cannot be cast to class java.util.List (com.service.productcatalogue.dto.ResponseDto is in unnamed module of loader 'app'; java.util.List is in module java.base of loader 'bootstrap')",
 
+error message1
+Resolved [org.springframework.http.converter.HttpMessageNotReadableException: JSON parse error: Cannot construct instance of `com.service.productcatalogue.dto.PriceDto` (although at least one Creator exists): no String-argument constructor/factory method to deserialize from String value ('amount')]
