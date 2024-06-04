@@ -254,3 +254,19 @@ json data for searchProducts
         "dateUpdated": "2023-06-01T12:00:00Z"
     }
 ]
+
+
+{
+  "name": "Airpod",
+  "category": "Headphone",
+  "description": "Wireless Bluetooth Device",
+  "image": "string",
+  "specification": "Airpod Gen 2.0",
+  "sku": "AZVP1!",
+  "brand": "Apple",
+  "productAssociationDto": {
+    "sku": "AZVP1!",
+    "relatedProducts": "apple watch",
+    "bundleDeals": "charger",
+    "productVariations": "watch version 2"
+  }
