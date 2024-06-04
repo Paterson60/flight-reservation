@@ -406,3 +406,238 @@ public class ProductController {
 
     // Other existing endpoints...
 }
+
+
+price entity 
+package com.service.productcatalogue.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.*;
+
+@Entity
+@Getter
+@Setter
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
+public class Price {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long priceId;
+    private Double amount;
+    private Double discount; // New field for discount percentage
+    private Double discountedPrice; // New field for discounted price
+
+    // Method to calculate the discounted price
+    public void calculateDiscountedPrice() {
+        if (discount != null && discount > 0) {
+            this.discountedPrice = this.amount - (this.amount * this.discount / 100);
+        } else {
+            this.discountedPrice = this.amount;
+        }
+    }
+}
+
+
+pricedto
+
+package com.service.productcatalogue.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+
+@Data
+@Schema(
+        name = "Product Pricing",
+        description = "Schema to holds the details of Associated Product Prices"
+)
+public class PriceDto {
+
+    @NotEmpty(message = "Amount cannot be empty or null")
+    @Schema(
+            description = "Holds the details of Associated each Product price"
+    )
+    private Double amount;
+
+    @Schema(
+            description = "Discount percentage on the product price"
+    )
+    private Double discount;
+
+    @Schema(
+            description = "Discounted price after applying the discount"
+    )
+    private Double discountedPrice;
+}
+
+ipriceserviceinterface
+
+package com.service.productcatalogue.service;
+
+import com.service.productcatalogue.dto.PriceDto;
+import com.service.productcatalogue.entity.Price;
+
+public interface IPriceService {
+
+    /**
+     * Adds or updates the price details.
+     * 
+     * @param priceDto - PriceDto object containing price details
+     * @return the saved Price entity
+     */
+    Price addOrUpdatePrice(PriceDto priceDto);
+
+    /**
+     * Fetches the price details by price ID.
+     *
+     * @param priceId - ID of the price entity
+     * @return the PriceDto object containing price details
+     */
+    PriceDto fetchPrice(Long priceId);
+}
+
+implement ipriceservice
+
+package com.service.productcatalogue.service.impl;
+
+import com.service.productcatalogue.dto.PriceDto;
+import com.service.productcatalogue.entity.Price;
+import com.service.productcatalogue.exception.ResourceNotFoundException;
+import com.service.productcatalogue.repository.PriceRepository;
+import com.service.productcatalogue.service.IPriceService;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@AllArgsConstructor
+public class PriceServiceImpl implements IPriceService {
+
+    private final PriceRepository priceRepository;
+
+    @Override
+    public Price addOrUpdatePrice(PriceDto priceDto) {
+        Price price = new Price();
+        price.setAmount(priceDto.getAmount());
+        price.setDiscount(priceDto.getDiscount());
+        price.calculateDiscountedPrice(); // Calculate discounted price
+
+        return priceRepository.save(price);
+    }
+
+    @Override
+    public PriceDto fetchPrice(Long priceId) {
+        Price price = priceRepository.findById(priceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Price", "ID", priceId.toString()));
+
+        PriceDto priceDto = new PriceDto();
+        priceDto.setAmount(price.getAmount());
+        priceDto.setDiscount(price.getDiscount());
+        priceDto.setDiscountedPrice(price.getDiscountedPrice());
+        
+        return priceDto;
+    }
+}
+
+updateproductmapper
+
+package com.service.productcatalogue.mapper;
+
+import com.service.productcatalogue.dto.PriceDto;
+import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.entity.Price;
+import com.service.productcatalogue.entity.Product;
+
+public class ProductMapper {
+
+    public static ProductDto mapToProductDto(Product product, ProductDto productDto) {
+        productDto.setName(product.getName());
+        productDto.setCategory(product.getCategory());
+        productDto.setDescription(product.getDescription());
+        productDto.setImage(product.getImage());
+        productDto.setSpecification(product.getSpecification());
+        productDto.setSku(product.getSku());
+        
+        if (product.getPrice() != null) {
+            Price price = product.getPrice();
+            PriceDto priceDto = new PriceDto();
+            priceDto.setAmount(price.getAmount());
+            priceDto.setDiscount(price.getDiscount());
+            priceDto.setDiscountedPrice(price.getDiscountedPrice());
+            productDto.setPrice(priceDto);
+        }
+        return productDto;
+    }
+
+    public static Product mapToProduct(ProductDto productDto, Product product) {
+        product.setName(productDto.getName());
+        product.setCategory(productDto.getCategory());
+        product.setDescription(productDto.getDescription());
+        product.setImage(productDto.getImage());
+        product.setSpecification(productDto.getSpecification());
+        product.setSku(productDto.getSku());
+
+        if (productDto.getPrice() != null) {
+            PriceDto priceDto = productDto.getPrice();
+            Price price = new Price();
+            price.setAmount(priceDto.getAmount());
+            price.setDiscount(priceDto.getDiscount());
+            price.calculateDiscountedPrice();
+            product.setPrice(price);
+        }
+        return product;
+    }
+}
+
+pricecontroller
+
+package com.service.productcatalogue.controller;
+
+import com.service.productcatalogue.dto.PriceDto;
+import com.service.productcatalogue.dto.ResponseDto;
+import com.service.productcatalogue.service.IPriceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@Tag(
+        name = "Price Management API",
+        description = "APIs for managing product prices including discounts"
+)
+@RestController
+@RequestMapping(path = "/api/prices", produces = {MediaType.APPLICATION_JSON_VALUE})
+@AllArgsConstructor
+public class PriceController {
+
+    private final IPriceService priceService;
+
+    @Operation(
+            summary = "Add or Update Price",
+            description = "API to add or update price details including discounts"
+    )
+    @PostMapping("/addOrUpdatePrice")
+    public ResponseEntity<ResponseDto> addOrUpdatePrice(@Valid @RequestBody PriceDto priceDto) {
+        priceService.addOrUpdatePrice(priceDto);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(new ResponseDto("201", "Price added/updated successfully"));
+    }
+
+    @Operation(
+            summary = "Fetch Price Details",
+            description = "API to fetch price details by price ID"
+    )
+    @GetMapping("/fetchPrice/{priceId}")
+    public ResponseEntity<PriceDto> fetchPrice(@PathVariable Long priceId) {
+        PriceDto priceDto = priceService.fetchPrice(priceId);
+        return ResponseEntity.status(HttpStatus.OK).body(priceDto);
+    }
+}
