@@ -805,3 +805,186 @@ error message
 
 error message1
 Resolved [org.springframework.http.converter.HttpMessageNotReadableException: JSON parse error: Cannot construct instance of `com.service.productcatalogue.dto.PriceDto` (although at least one Creator exists): no String-argument constructor/factory method to deserialize from String value ('amount')]
+
+
+junitproductrepo
+
+package com.service.productcatalogue.repository;
+
+import com.service.productcatalogue.entity.Price;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+class PriceRepositoryTest {
+
+    @Autowired
+    private PriceRepository priceRepository;
+
+    @Test
+    void testSaveAndFindById() {
+        Price price = new Price();
+        price.setAmount(1200.00);
+        price.setDiscount(200.00);
+        Price savedPrice = priceRepository.save(price);
+
+        Optional<Price> retrievedPrice = priceRepository.findById(savedPrice.getPriceId());
+        assertThat(retrievedPrice).isPresent();
+        assertThat(retrievedPrice.get().getAmount()).isEqualTo(1200.00);
+        assertThat(retrievedPrice.get().getDiscount()).isEqualTo(200.00);
+    }
+
+    @Test
+    void testDeleteById() {
+        Price price = new Price();
+        price.setAmount(1200.00);
+        price.setDiscount(200.00);
+        Price savedPrice = priceRepository.save(price);
+
+        priceRepository.deleteById(savedPrice.getPriceId());
+        Optional<Price> retrievedPrice = priceRepository.findById(savedPrice.getPriceId());
+        assertThat(retrievedPrice).isNotPresent();
+    }
+}
+
+junitproductassociaterepo
+
+package com.service.productcatalogue.repository;
+
+import com.service.productcatalogue.entity.ProductAssociation;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+class ProductAssociationRepositoryTest {
+
+    @Autowired
+    private ProductAssociationRepository productAssociationRepository;
+
+    @Test
+    void testSaveAndFindById() {
+        ProductAssociation productAssociation = new ProductAssociation();
+        productAssociation.setSku("AZVP1!");
+        productAssociation.setRelatedProducts("Updated Related Products");
+        productAssociation.setBundleDeals("Updated Bundle Deals");
+        productAssociation.setProductVariations("Updated Product Variations");
+        ProductAssociation savedProductAssociation = productAssociationRepository.save(productAssociation);
+
+        Optional<ProductAssociation> retrievedProductAssociation = productAssociationRepository.findById(savedProductAssociation.getSku());
+        assertThat(retrievedProductAssociation).isPresent();
+        assertThat(retrievedProductAssociation.get().getRelatedProducts()).isEqualTo("Updated Related Products");
+    }
+
+    @Test
+    void testDeleteById() {
+        ProductAssociation productAssociation = new ProductAssociation();
+        productAssociation.setSku("AZVP1!");
+        productAssociation.setRelatedProducts("Updated Related Products");
+        productAssociation.setBundleDeals("Updated Bundle Deals");
+        productAssociation.setProductVariations("Updated Product Variations");
+        ProductAssociation savedProductAssociation = productAssociationRepository.save(productAssociation);
+
+        productAssociationRepository.deleteById(savedProductAssociation.getSku());
+        Optional<ProductAssociation> retrievedProductAssociation = productAssociationRepository.findById(savedProductAssociation.getSku());
+        assertThat(retrievedProductAssociation).isNotPresent();
+    }
+}
+
+junitproductreopo
+
+package com.service.productcatalogue.repository;
+
+import com.service.productcatalogue.entity.Price;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.entity.ProductAssociation;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+class ProductRepositoryTest {
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private PriceRepository priceRepository;
+
+    @Autowired
+    private ProductAssociationRepository productAssociationRepository;
+
+    @Test
+    void testSaveAndFindById() {
+        Price price = new Price();
+        price.setAmount(1200.00);
+        price.setDiscount(200.00);
+        Price savedPrice = priceRepository.save(price);
+
+        ProductAssociation productAssociation = new ProductAssociation();
+        productAssociation.setSku("AZVP1!");
+        productAssociation.setRelatedProducts("Updated Related Products");
+        productAssociation.setBundleDeals("Updated Bundle Deals");
+        productAssociation.setProductVariations("Updated Product Variations");
+        ProductAssociation savedProductAssociation = productAssociationRepository.save(productAssociation);
+
+        Product product = new Product();
+        product.setName("Updated Airpod");
+        product.setCategory("Headphone");
+        product.setDescription("Updated Wireless Bluetooth Device");
+        product.setImage("updated_image_url");
+        product.setSpecification("Updated Airpod Gen 2.0");
+        product.setSku("AZVP1!");
+        product.setPrice(savedPrice);
+        product.setProductAssociation(savedProductAssociation);
+        Product savedProduct = productRepository.save(product);
+
+        Optional<Product> retrievedProduct = productRepository.findById(savedProduct.getProductId());
+        assertThat(retrievedProduct).isPresent();
+        assertThat(retrievedProduct.get().getName()).isEqualTo("Updated Airpod");
+    }
+
+    @Test
+    void testDeleteById() {
+        Price price = new Price();
+        price.setAmount(1200.00);
+        price.setDiscount(200.00);
+        Price savedPrice = priceRepository.save(price);
+
+        ProductAssociation productAssociation = new ProductAssociation();
+        productAssociation.setSku("AZVP1!");
+        productAssociation.setRelatedProducts("Updated Related Products");
+        productAssociation.setBundleDeals("Updated Bundle Deals");
+        productAssociation.setProductVariations("Updated Product Variations");
+        ProductAssociation savedProductAssociation = productAssociationRepository.save(productAssociation);
+
+        Product product = new Product();
+        product.setName("Updated Airpod");
+        product.setCategory("Headphone");
+        product.setDescription("Updated Wireless Bluetooth Device");
+        product.setImage("updated_image_url");
+        product.setSpecification("Updated Airpod Gen 2.0");
+        product.setSku("AZVP1!");
+        product.setPrice(savedPrice);
+        product.setProductAssociation(savedProductAssociation);
+        Product savedProduct = productRepository.save(product);
+
+        productRepository.deleteById(savedProduct.getProductId());
+        Optional<Product> retrievedProduct = productRepository.findById(savedProduct.getProductId());
+        assertThat(retrievedProduct).isNotPresent();
+    }
+}
