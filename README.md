@@ -1157,3 +1157,86 @@ public class IProductServiceTest {
         verify(priceRepository, times(1)).save(any());
     }
 }
+
+GlobalExceptionHandlerjunits
+
+package com.service.productcatalogue.exception;
+
+import com.service.productcatalogue.dto.ErrorResponseDto;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.service.ProductService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(controllers = GlobalExceptionHandler.class)
+class GlobalExceptionHandlerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ProductService productService;
+
+    @InjectMocks
+    private GlobalExceptionHandler globalExceptionHandler;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void handleResourceNotFoundException() throws Exception {
+        when(productService.getProductById(1L)).thenThrow(new ResourceNotFoundException("Product not found"));
+
+        mockMvc.perform(get("/api/products/1"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.name()))
+                .andExpect(jsonPath("$.message").value("Product not found"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.details").exists());
+    }
+
+    @Test
+    void handleProductExistsException() throws Exception {
+        when(productService.createProduct(new Product())).thenThrow(new ProductExistsException("Product already exists"));
+
+        mockMvc.perform(get("/api/products"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.name()))
+                .andExpect(jsonPath("$.message").value("Product already exists"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.details").exists());
+    }
+
+    @Test
+    void handleGlobalException() throws Exception {
+        when(productService.getProductById(1L)).thenThrow(new RuntimeException("Internal server error"));
+
+        mockMvc.perform(get("/api/products/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(HttpStatus.INTERNAL_SERVER_ERROR.name()))
+                .andExpect(jsonPath("$.message").value("Internal server error"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.details").exists());
+    }
+}
