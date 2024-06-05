@@ -1240,3 +1240,133 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.details").exists());
     }
 }
+
+
+globalhandlexceptionjunits
+
+package com.service.productcatalogue.exception;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.service.productcatalogue.dto.ErrorResponseDto;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.WebRequest;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(GlobalExceptionHandler.class)
+class GlobalExceptionHandlerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private WebRequest webRequest;
+
+    @BeforeEach
+    void setUp() {
+    }
+
+    @Test
+    void handleMethodArgumentNotValid() throws Exception {
+        Map<String, String> validationErrors = new HashMap<>();
+        validationErrors.put("name", "must not be blank");
+
+        MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, null) {
+            @Override
+            public List<ObjectError> getBindingResult() {
+                FieldError fieldError = new FieldError("product", "name", "must not be blank");
+                return List.of(fieldError);
+            }
+        };
+
+        when(webRequest.getDescription(false)).thenReturn("uri=/test");
+
+        mockMvc.perform(post("/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.name").value("must not be blank"));
+    }
+
+    @Test
+    void handleGlobalException() throws Exception {
+        Exception ex = new Exception("Internal server error");
+
+        when(webRequest.getDescription(false)).thenReturn("uri=/test");
+
+        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
+                "uri=/test",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+
+        mockMvc.perform(post("/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Internal server error"))
+                .andExpect(jsonPath("$.path").value("uri=/test"));
+    }
+
+    @Test
+    void handleResourceNotFoundException() throws Exception {
+        ResourceNotFoundException ex = new ResourceNotFoundException("Resource not found");
+
+        when(webRequest.getDescription(false)).thenReturn("uri=/test");
+
+        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
+                "uri=/test",
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+
+        mockMvc.perform(post("/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Resource not found"))
+                .andExpect(jsonPath("$.path").value("uri=/test"));
+    }
+
+    @Test
+    void handleProductExistsException() throws Exception {
+        ProductExistsException ex = new ProductExistsException("Product already exists");
+
+        when(webRequest.getDescription(false)).thenReturn("uri=/test");
+
+        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
+                "uri=/test",
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+
+        mockMvc.perform(post("/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Product already exists"))
+                .andExpect(jsonPath("$.path").value("uri=/test"));
+    }
+}
+
