@@ -988,3 +988,172 @@ class ProductRepositoryTest {
         assertThat(retrievedProduct).isNotPresent();
     }
 }
+
+
+Iproductservicejunit
+
+package com.service.productcatalogue.service;
+
+import com.service.productcatalogue.dto.*;
+import com.service.productcatalogue.entity.Product;
+import com.service.productcatalogue.repository.ProductRepository;
+import com.service.productcatalogue.repository.PriceRepository;
+import com.service.productcatalogue.repository.ProductAssociationRepository;
+import com.service.productcatalogue.mapper.ProductMapper;
+import com.service.productcatalogue.mapper.ProductAssociationMapper;
+import com.service.productcatalogue.exception.ProductExistsException;
+import com.service.productcatalogue.exception.ResourceNotFoundException;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(SpringExtension.class)
+public class IProductServiceTest {
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @Mock
+    private PriceRepository priceRepository;
+
+    @Mock
+    private ProductAssociationRepository productAssociationRepository;
+
+    @InjectMocks
+    private ProductServiceImpl productService;
+
+    private Product product;
+    private ProductDto productDto;
+    private PriceDto priceDto;
+    private ProductAssociationDto productAssociationDto;
+    private AddAllProductDetailsDto addAllProductDetailsDto;
+
+    @BeforeEach
+    public void setUp() {
+        product = new Product();
+        product.setProductId(1L);
+        product.setSku("SKU123");
+
+        productDto = new ProductDto();
+        productDto.setSku("SKU123");
+
+        priceDto = new PriceDto();
+        priceDto.setAmount(1200L);
+
+        productAssociationDto = new ProductAssociationDto();
+        productAssociationDto.setSku("SKU123");
+
+        addAllProductDetailsDto = new AddAllProductDetailsDto();
+        addAllProductDetailsDto.setProductDto(productDto);
+        addAllProductDetailsDto.setPriceDto(priceDto);
+        addAllProductDetailsDto.setProductAssociationDto(productAssociationDto);
+    }
+
+    @Test
+    public void testAddProduct() {
+        when(productRepository.findBySku(productDto.getSku())).thenReturn(Optional.empty());
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+
+        assertDoesNotThrow(() -> productService.addProduct(addAllProductDetailsDto));
+
+        verify(productRepository, times(1)).save(any(Product.class));
+        verify(productAssociationRepository, times(1)).save(any());
+    }
+
+    @Test
+    public void testFetchProduct() {
+        when(productRepository.findBySku("SKU123")).thenReturn(Optional.of(product));
+
+        ProductDto fetchedProduct = productService.fetchProduct("SKU123");
+
+        assertNotNull(fetchedProduct);
+        assertEquals("SKU123", fetchedProduct.getSku());
+    }
+
+    @Test
+    public void testFetchAllProducts() {
+        List<Product> products = new ArrayList<>();
+        products.add(product);
+
+        when(productRepository.findAll()).thenReturn(products);
+
+        List<Product> fetchedProducts = productService.fetchAllProducts();
+
+        assertEquals(1, fetchedProducts.size());
+        assertEquals("SKU123", fetchedProducts.get(0).getSku());
+    }
+
+    @Test
+    public void testUpdateProduct() {
+        when(productRepository.findBySku(productDto.getSku())).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+
+        boolean isUpdated = productService.updateProduct(productDto);
+
+        assertTrue(isUpdated);
+    }
+
+    @Test
+    public void testDeleteProduct() {
+        when(productRepository.findBySku("SKU123")).thenReturn(Optional.of(product));
+
+        boolean isDeleted = productService.deleteProduct("SKU123");
+
+        assertTrue(isDeleted);
+        verify(productRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    public void testSearchProducts() {
+        List<ProductDto> productDtos = new ArrayList<>();
+        productDtos.add(productDto);
+
+        when(productRepository.findAll()).thenReturn(List.of(product));
+
+        List<ProductDto> foundProducts = productService.searchProducts(new ProductSearchCriteriaDto());
+
+        assertEquals(1, foundProducts.size());
+        assertEquals("SKU123", foundProducts.get(0).getSku());
+    }
+
+    @Test
+    public void testGetProductPagination() {
+        List<Product> products = new ArrayList<>();
+        products.add(product);
+
+        Page<Product> productPage = new PageImpl<>(products);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("name"));
+
+        when(productRepository.findAll(pageable)).thenReturn(productPage);
+
+        Page<Product> paginatedProducts = productService.getProductPagination(0, 10, "name");
+
+        assertEquals(1, paginatedProducts.getTotalElements());
+    }
+
+    @Test
+    public void testUpdatePrice() {
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(priceRepository.findById(product.getPrice().getPriceId())).thenReturn(Optional.of(product.getPrice()));
+        when(priceRepository.save(any())).thenReturn(product.getPrice());
+
+        assertDoesNotThrow(() -> productService.updatePrice(1L, priceDto));
+
+        verify(priceRepository, times(1)).save(any());
+    }
+}
