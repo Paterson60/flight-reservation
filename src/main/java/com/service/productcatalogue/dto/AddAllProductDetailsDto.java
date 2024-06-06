@@ -8,10 +8,10 @@ import lombok.Data;
 
 @Data
 @Schema(
-        name = "Product",
+        name = "All Product Details",
         description = "Schema to hold Product details"
 )
-public class ProductDto {
+public class AddAllProductDetailsDto {
 
     @Schema(
             description = "Name of the Product", example = "Airpod"
@@ -45,7 +45,7 @@ public class ProductDto {
             description = "Unique representation of the Product", example = "AZVP1!"
     )
     @NotEmpty(message = "SKU cannot be empty")
-    @Size(min=1,max = 6,message = "The length of the SKU should be between 1 to 6 ")
+    @Size(min=1,max = 6,message = "The length of the SKU should be between 1 to 5 ")
     private String sku;
 
     @Schema(
@@ -56,13 +56,29 @@ public class ProductDto {
     private String brand;
 
     @Schema(
-            description = "Further details of the Product Hierarchy ", example = "Bundle with Iphone"
+            description = "Product details having related products"
     )
-    private ProductAssociationDto productAssociationDto;
+    private String relatedProducts;
 
     @Schema(
-            description = "Pricing of the Product", example = "1000"
+            description = "Products which are bundled together"
     )
-    private PriceDto priceDto;
+    private String bundleDeals;
+
+    @Schema(
+            description = "Shows multiple variations of the Product"
+    )
+    private String productVariations;
+
+
+    @Schema(
+            description = "Price of the Product", example = "1000"
+    )
+    private Long amount;
+
+    @Schema(
+            description = "discount price of the Product", example = "200"
+    )
+    private Long discount;
 
 }

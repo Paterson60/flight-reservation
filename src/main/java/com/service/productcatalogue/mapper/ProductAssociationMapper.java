@@ -1,8 +1,6 @@
 package com.service.productcatalogue.mapper;
 
 import com.service.productcatalogue.dto.ProductAssociationDto;
-import com.service.productcatalogue.dto.ProductDto;
-import com.service.productcatalogue.entity.Product;
 import com.service.productcatalogue.entity.ProductAssociation;
 
 public class ProductAssociationMapper {

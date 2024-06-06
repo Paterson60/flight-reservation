@@ -1,9 +1,8 @@
 package com.service.productcatalogue.controller;
 
 import com.service.productcatalogue.constants.ProductConstants;
-import com.service.productcatalogue.dto.ErrorResponseDto;
-import com.service.productcatalogue.dto.ProductDto;
-import com.service.productcatalogue.dto.ResponseDto;
+import com.service.productcatalogue.dto.*;
+import com.service.productcatalogue.entity.Product;
 import com.service.productcatalogue.service.IProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,11 +13,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+
 @Tag(
         name = "CRUD Rest APIs For Product In Product Catalogue Service",
         description = "CRUD Rest APIs in Product"
@@ -40,8 +44,8 @@ public class ProductController {
             description = "HTTP Status Product Added"
     )
     @PostMapping("/addProduct")
-    public ResponseEntity<ResponseDto> addProduct(@Valid @RequestBody ProductDto productDto){
-        iProductService.addProduct(productDto);
+    public ResponseEntity<ResponseDto> addProduct(@Valid @RequestBody AddAllProductDetailsDto addAllProductDetailsDto){
+        iProductService.addProduct(addAllProductDetailsDto);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(new ResponseDto(ProductConstants.STATUS_201,ProductConstants.MESSAGE_201));
@@ -61,6 +65,19 @@ public class ProductController {
                                                               String sku){
         ProductDto productDto = iProductService.fetchProduct(sku);
         return ResponseEntity.status(HttpStatus.OK).body(productDto);
+    }
+
+    @Operation(
+            summary = "Fetch All Product Details Rest API",
+            description = "Rest API to fetch All Product Details"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "HTTP Status Ok"
+    )
+    @GetMapping("/fetchAllProducts")
+    public List<Product> fetchAllProducts(){
+        return iProductService.fetchAllProducts();
     }
 
     @Operation(
@@ -132,5 +149,56 @@ public class ProductController {
                     .status(HttpStatus.EXPECTATION_FAILED)
                     .body(new ResponseDto(ProductConstants.STATUS_417, ProductConstants.MESSAGE_417_DELETE));
         }
+    }
+
+    @Operation(
+            summary = "Search Products",
+            description = "Search for products based on various criteria"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved matching products"
+    )
+    @PostMapping("/searchProducts")
+    public ResponseEntity<?> searchProducts(@Valid @RequestBody ProductSearchCriteriaDto searchCriteria) {
+        List<ProductDto> matchingProducts = iProductService.searchProducts(searchCriteria);
+        if(matchingProducts.isEmpty()){
+            ResponseDto responseDto = new ResponseDto(ProductConstants.STATUS_500,ProductConstants.MESSAGE_500);
+             return ResponseEntity
+                    .status(HttpStatus.EXPECTATION_FAILED).body(responseDto);
+        }else{
+            return ResponseEntity.status(HttpStatus.OK).body(matchingProducts);
+        }
+
+    }
+
+    @Operation(
+            summary = "Search Products by Name",
+            description = "Search for products based on name"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Successfully retrieved matching products"
+    )
+    @RequestMapping(value = "/paginAndSortingProducts/{pageNumber}/{pageSize}/{sortProperty}", method = RequestMethod.GET)
+    public Page<Product> productPagination(@PathVariable Integer pageNumber,
+                                           @PathVariable Integer pageSize,
+                                           @PathVariable String sortProperty){
+        return iProductService.getProductPagination(pageNumber, pageSize, sortProperty);
+    }
+
+    @Operation(
+            summary = "Update Price Rest API",
+            description = "Rest API to update Product price"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Http Status price updated"
+    )
+    @PutMapping("/updatePrice")
+    public ResponseEntity<ResponseDto> updatePrice(@RequestParam Long productId,
+                                                   @RequestBody PriceDto priceDto){
+        iProductService.updatePrice(productId,priceDto);
+        return ResponseEntity.status(HttpStatus.OK).body(new ResponseDto(ProductConstants.STATUS_200,ProductConstants.MESSAGE_200));
     }
 }

@@ -7,10 +7,15 @@ import jakarta.persistence.Id;
 import lombok.*;
 
 @Entity
-@Getter@Setter@ToString@AllArgsConstructor@NoArgsConstructor
+@Getter
+@Setter
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
 public class Price {
-@Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
-private Long priceId;
-private Double amount;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long priceId;
+    private Long amount;
+    private Long discount;
 }

@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
+
+
 @Data
 @Schema(
         name = "Product Pricing",
@@ -16,4 +18,10 @@ public class PriceDto {
             description = "Holds the details of Associated each Product price"
     )
     private Long amount;
+
+    @Schema(
+            description = "Discount percentage on the product price"
+    )
+    private Long discount;
+
 }

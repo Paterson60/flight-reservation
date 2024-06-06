@@ -13,7 +13,7 @@ import lombok.Data;
 public class ProductAssociationDto {
 
     @NotEmpty(message = "SKU cannot be empty")
-    @Size(min=1,max = 5,message = "The length of the SKU should be between 1 to 5 ")
+    @Size(min=1,max = 5,message = "The length of the SKU should be between 1 to 6 ")
     @Schema(
             description = "Product Unique Number"
     )

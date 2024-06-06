@@ -14,6 +14,6 @@ public interface ProductAssociationRepository extends JpaRepository<ProductAssoc
     Optional<ProductAssociation> findBySku(String sku);
     @Transactional
     @Modifying
-    void deleteBySku(String sku);
+    void deleteById(Long associationId);
 
 }

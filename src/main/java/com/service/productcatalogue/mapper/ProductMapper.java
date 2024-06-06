@@ -1,6 +1,8 @@
 package com.service.productcatalogue.mapper;
 
+import com.service.productcatalogue.dto.PriceDto;
 import com.service.productcatalogue.dto.ProductDto;
+import com.service.productcatalogue.entity.Price;
 import com.service.productcatalogue.entity.Product;
 
 public class ProductMapper {
@@ -12,8 +14,7 @@ public class ProductMapper {
         productDto.setImage(product.getImage());
         productDto.setSpecification(product.getSpecification());
         productDto.setSku(product.getSku());
-        productDto.setPrice(product.getPrice());
-        //productDto.setProductAssociationDto(product.getProductAssociation());
+        productDto.setBrand(product.getBrand());
         return productDto;
     }
 
@@ -24,8 +25,21 @@ public class ProductMapper {
         product.setImage(productDto.getImage());
         product.setSpecification(productDto.getSpecification());
         product.setSku(productDto.getSku());
-        product.setPrice(productDto.getPrice());
-        //product.setProductAssociation(productDto.getProductAssociationDto());
+        product.setBrand(productDto.getBrand());
         return product;
+    }
+
+    public static PriceDto mapToPriceDto(Price price){
+        PriceDto priceDto = new PriceDto();
+        priceDto.setAmount(price.getAmount());
+        priceDto.setDiscount(price.getDiscount());
+        return priceDto;
+    }
+
+    public static Price mapToPrice(PriceDto priceDto){
+        Price price = new Price();
+        price.setAmount(priceDto.getAmount());
+        price.setDiscount(priceDto.getDiscount());
+        return price;
     }
 }
