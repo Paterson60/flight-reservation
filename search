@@ -1,1 +1,260 @@
+Product entity 
+
+package com.service.inventory.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity
+@Table(name = "products")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Product {
+    @Id
+    private String sku;
+    private String name;
+    private String description;
+}
+
+
+Inventory entity 
+
+package com.service.inventory.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+@Entity
+@Table(name = "inventory")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Inventory {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String sku;
+    private int quantity;
+}
+
+
+Product Repository 
+
+package com.service.inventory.repository;
+
+import com.service.inventory.model.Product;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ProductRepository extends JpaRepository<Product, String> {
+}
+
+inventory repository 
+package com.service.inventory.repository;
+
+import com.service.inventory.model.Inventory;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface InventoryRepository extends JpaRepository<Inventory, Long> {
+    Inventory findBySku(String sku);
+}
+
+Inventory service 
+
+package com.service.inventory.service;
+
+import com.service.inventory.model.Inventory;
+import com.service.inventory.repository.InventoryRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+public class InventoryService {
+    @Autowired
+    private InventoryRepository inventoryRepository;
+
+    public Inventory getInventoryBySku(String sku) {
+        return inventoryRepository.findBySku(sku);
+    }
+
+    public Inventory updateInventory(Inventory inventory) {
+        return inventoryRepository.save(inventory);
+    }
+
+    public void checkAndSendRestockAlert(String sku) {
+        Inventory inventory = inventoryRepository.findBySku(sku);
+        if (inventory != null && inventory.getQuantity() < 10) {
+            // Send alert (you would implement actual messaging here)
+            System.out.println("Stock for SKU " + sku + " is below threshold. Sending restock alert.");
+        }
+    }
+}
+
+
+Inventory controller
+
+package com.service.inventory.controller;
+
+import com.service.inventory.model.Inventory;
+import com.service.inventory.service.InventoryService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/inventory")
+public class InventoryController {
+    @Autowired
+    private InventoryService inventoryService;
+
+    @GetMapping("/{sku}")
+    public ResponseEntity<Inventory> getInventory(@PathVariable String sku) {
+        Inventory inventory = inventoryService.getInventoryBySku(sku);
+        return ResponseEntity.ok(inventory);
+    }
+
+    @PutMapping("/{sku}")
+    public ResponseEntity<Inventory> updateInventory(@PathVariable String sku, @RequestBody Inventory inventory) {
+        inventory.setSku(sku);
+        Inventory updatedInventory = inventoryService.updateInventory(inventory);
+        inventoryService.checkAndSendRestockAlert(sku);
+        return ResponseEntity.ok(updatedInventory);
+    }
+}
+
+Exception handling
+
+package com.service.inventory.exception;
+
+import com.service.inventory.dto.ErrorResponseDto;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@ControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        Map<String, String> validationErrors = new HashMap<>();
+        List<ObjectError> validationErrorList = ex.getBindingResult().getAllErrors();
+
+        validationErrorList.forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String validationMsg = error.getDefaultMessage();
+            validationErrors.put(fieldName, validationMsg);
+        });
+        return new ResponseEntity<>(validationErrors, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> handleGlobalException(Exception exception,
+                                                                  WebRequest webRequest){
+        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
+                webRequest.getDescription(false),
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                exception.getMessage(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponseDTO,HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+
+Messaging<Restocking alert>
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-amqp</artifactId>
+</dependency>
+
+
+application.properties
+
+spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
+
+Configuration class for RabbitMq
+
+package com.service.inventory.config;
+
+import org.springframework.amqp.core.Queue;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitMQConfig {
+
+    public static final String RESTOCK_ALERT_QUEUE = "restock-alert-queue";
+
+    @Bean
+    public Queue queue() {
+        return new Queue(RESTOCK_ALERT_QUEUE, false);
+    }
+}
+
+
+Send messages to the queue in InventoryService:
+
+package com.service.inventory.service;
+
+import com.service.inventory.model.Inventory;
+import com.service.inventory.repository.InventoryRepository;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class InventoryService {
+    @Autowired
+    private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    public Inventory getInventoryBySku(String sku) {
+        return inventoryRepository.findBySku(sku);
+    }
+
+    public Inventory updateInventory(Inventory inventory) {
+        return inventoryRepository.save(inventory);
+    }
+
+    public void checkAndSendRestockAlert(String sku) {
+        Inventory inventory = inventoryRepository.findBySku(sku);
+        if (inventory != null && inventory.getQuantity() < 10) {
+            // Send alert to RabbitMQ
+            rabbitTemplate.convertAndSend("restock-alert-queue", "Stock for SKU " + sku + " is below threshold. Sending restock alert.");
+        }
+    }
+}
 
