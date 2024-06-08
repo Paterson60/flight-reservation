@@ -1,97 +1,14 @@
-package com.service.productcatalogue.exception;
+Now that we together have developed the spring boot mircoservices Microservice 1 - Porduct catalogue service for e-commerece which had endpoints to develop as shown below  
+This service is primarily responsible for maintaining and managing the entire product catalogue of an eCommerce site. Here are some of its key components:
+Product Information Management: Manages all information related to products including product names, descriptions, categories, images, and specifications.
+Search Functionality:  Helps users find products using search keywords, filters, and sorting options.
+Product Pricing: Handles product pricing, including any promotional or discounted prices.
+Product Association: Manages relationships between different products, such as related products, bundle deals, and product variations.
+Now our second task is to build 'Microservice 2 -Inventory Management Service' microservice application and has endpoints that needs to be built like:
+This service manages the stock levels of products. Here are its main tasks:
+Stock Tracking: Tracks current stock levels for all products.
+Restocking Alerts: Sends alerts when stock levels fall below a certain threshold. (Put message in a queue)
+Product Availability Updates: Updates product availability status based on current stock levels.
 
-import com.service.productcatalogue.dto.ErrorResponseDto;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockitoAnnotations;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.context.WebApplicationContext;
+can you read the requirements carefully and build spring boot Mircoservice 2 - Inventory Management Service
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@ExtendWith(SpringExtension.class)
-@WebMvcTest(controllers = GlobalExceptionHandler.class, 
-            includeFilters = @ComponentScan.Filter(classes = ControllerAdvice.class))
-public class GlobalExceptionHandlerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
-    private WebApplicationContext webApplicationContext;
-
-    @BeforeEach
-    public void setup() {
-        MockitoAnnotations.openMocks(this);
-    }
-
-    @Test
-    public void handleMethodArgumentNotValidExceptionTest() throws Exception {
-        String requestBody = "{\"invalidField\":\"invalidValue\"}"; // Adjust according to your validation logic
-
-        mockMvc.perform(post("/some-endpoint")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.invalidField").exists());
-    }
-
-    @Test
-    public void handleGlobalExceptionTest() throws Exception {
-        String errorMessage = "Internal Server Error";
-
-        mockMvc.perform(post("/throw-global-exception")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").value(errorMessage));
-    }
-
-    @Test
-    public void handleResourceNotFoundExceptionTest() throws Exception {
-        String errorMessage = "Resource not found";
-
-        mockMvc.perform(post("/throw-resource-not-found-exception")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value(errorMessage));
-    }
-
-    @Test
-    public void handleProductExistsExceptionTest() throws Exception {
-        String errorMessage = "Product already exists";
-
-        mockMvc.perform(post("/throw-product-exists-exception")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(errorMessage));
-    }
-}
-
-jpaconfig
-
-package com.service.productcatalogue;
-
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.data.repository.NoRepositoryBean;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
-@TestConfiguration
-@EnableAutoConfiguration(exclude = {
-        org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration.class})
-public class NoJpaTestConfig {
-}
