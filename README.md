@@ -1,3 +1,7 @@
+Below project name is message which I'm using it as event driven to send an message and sms which is built on springboot 3.
+providing you the code which I have wrriten.
+
+DTO package has the following code
 package com.service.message.dto;
 
 /**
@@ -5,47 +9,25 @@ package com.service.message.dto;
  * @param quantity
  * @param sku
  * @param category
- * 
+ * Helps in sending the message to Inventory Catalogue
  */
 public record InventoryMsgDto(String sku, int quantity, String category) {
 }
 
-Message funciton
+Functions package has the following code
+package com.service.message.dto;
 
-package com.service.message.functions;
-
-import com.service.message.dto.InventoryMsgDto;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import java.util.function.Function;
-
-@Configuration
-public class MessageFunctions {
-
-    private static final Logger log = LoggerFactory.getLogger(MessageFunctions.class);
-
-    @Bean
-    public Function<InventoryMsgDto, InventoryMsgDto> message(){
-            return inventoryMsgDto -> {
-                log.info("Quantity of a product is less than 10: " + inventoryMsgDto.toString());
-                return inventoryMsgDto;
-            };
-    }
-
-    @Bean
-    public Function<InventoryMsgDto, String> sms(){
-        return inventoryMsgDto -> {
-            log.info("Sending sms with the details: " + inventoryMsgDto);
-            return inventoryMsgDto.sku();
-        };
-    }
+/**
+ *
+ * @param quantity
+ * @param sku
+ * @param category
+ * Helps in sending the message to Inventory Catalogue
+ */
+public record InventoryMsgDto(String sku, int quantity, String category) {
 }
 
-
-StreamLambda Handler
+in parent package of message has the following code
 
 package com.service.message;
 
@@ -81,36 +63,25 @@ public class StreamLambdaHandler implements RequestStreamHandler {
     }
 }
 
-application.yml
-spring:
-  application :
-    name : "message"
-  cloud:
-    function:
-      definition: message|sms
+package com.service.message;
 
-inventory catalogue
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
 
-package com.service.inventorycatalogue.dto;
+@SpringBootApplication
+@ComponentScan(basePackages= "com.service.message")
+public class MessageApplication {
 
-import io.swagger.v3.oas.annotations.media.Schema;
+	public static void main(String[] args) {
+		SpringApplication.run(MessageApplication.class, args);
+	}
 
-/**
- * @param quantity
- * @param sku
- * @param category
- * Dto layer for receiving the message for message artifact
- */
-
-@Schema(
-        name = "InventoryMsdDto",
-        description = "Schema to hold Inventory message details"
-)
-public record InventoryMsgDto(String sku, int quantity, String category) {
 }
 
+Now I'm providing you the code of microservice 2: inventory management serivce which has the logic to tirgger the event of message application
 
-entity
+Entity Package has the following code:
 
 package com.service.inventorycatalogue.entity;
 
@@ -152,8 +123,6 @@ public class InventoryEntity {
 
     private String status;
 
-    private Boolean communication;
-
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -163,8 +132,164 @@ public class InventoryEntity {
     private LocalDateTime updatedAt;
 }
 
-Inventory function
+DTO package has the following code :
 
+package com.service.inventorycatalogue.dto;
+
+/**
+ * Dto layer of InventoryEntity
+ *
+ */
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
+import lombok.Data;
+
+@Data
+@Schema(
+        name = "Inventory",
+        description = "Schema to hold Inventory details"
+)
+public class InventoryDto {
+
+    @Schema(
+            description = "Unique representation of the Inventory", example = "AZVP1!"
+    )
+    @NotEmpty(message = "Sku cannot be null")
+    private String sku;
+
+    @Schema(
+            description = "Quantity of the Product", example = "20"
+    )
+    @Min(1)
+    @Max(100)
+    @Positive
+    private int quantity;
+
+    @Schema(
+            description = "Category representation of the Inventory", example = "Mobile!"
+    )
+    @NotEmpty(message = "Category cannot be empty")
+    private String category;
+
+    @Schema(
+            description = "Status representation of the Inventory"
+    )
+    @NotEmpty(message = "Status cannot be empty")
+    private String status;
+}
+
+
+package com.service.message;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+
+@SpringBootApplication
+@ComponentScan(basePackages= "com.service.message")
+public class MessageApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(MessageApplication.class, args);
+	}
+
+}
+
+package com.service.inventorycatalogue.dto;
+
+/**
+ * Dto layer to update quantity number
+ *
+ */
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
+import lombok.Data;
+
+@Data
+@Schema(
+        name = "After Order Quantity update",
+        description = "Schema to hold quantity details after order "
+)
+public class UpdateQuantityAFOrderDto {
+
+    @Schema(
+            description = "Unique representation of the Inventory", example = "AZVP1!"
+    )
+    @NotEmpty(message = "Sku cannot be null")
+    private String sku;
+
+    @Schema(
+            description = "Quantity of the Product", example = "20"
+    )
+    @Min(1)
+    @Max(100)
+    @Positive
+    private int quantity;
+}
+
+Mapper package has the following code :
+
+package com.service.inventorycatalogue.mapper;
+
+/**
+ * Converts the Inventory Dto layer to Inventory Entity layer and vice versa
+ *
+ */
+
+import com.service.inventorycatalogue.dto.InventoryDto;
+import com.service.inventorycatalogue.entity.InventoryEntity;
+
+public class InventoryMapper {
+
+    public static InventoryDto mapToInventoryDto(InventoryEntity inventoryEntity, InventoryDto inventoryDto){
+        inventoryDto.setSku(inventoryEntity.getSku());
+        inventoryDto.setQuantity(inventoryEntity.getQuantity());
+        inventoryDto.setCategory(inventoryEntity.getCategory());
+        inventoryDto.setStatus(inventoryEntity.getStatus());
+        return inventoryDto;
+    }
+
+    public static InventoryEntity mapToInventoryEntity(InventoryDto inventoryDto, InventoryEntity inventoryEntity){
+        inventoryEntity.setSku(inventoryDto.getSku());
+        inventoryEntity.setQuantity(inventoryDto.getQuantity());
+        inventoryEntity.setCategory(inventoryDto.getCategory());
+        inventoryEntity.setStatus(inventoryDto.getStatus());
+        return inventoryEntity;
+    }
+}
+
+package com.service.inventorycatalogue.mapper;
+
+/**
+ * Converts the UpdateQuantityAFOrderDto Dto layer to Inventory Entity layer and vice versa
+ *
+ */
+
+import com.service.inventorycatalogue.dto.InventoryDto;
+import com.service.inventorycatalogue.dto.UpdateQuantityAFOrderDto;
+import com.service.inventorycatalogue.entity.InventoryEntity;
+
+public class UpdateQuantityAFOrderMapper {
+
+    public static UpdateQuantityAFOrderDto mapToUpdateQuantityAFOrderDto(InventoryEntity inventoryEntity, UpdateQuantityAFOrderDto updateQuantityAFOrderDto){
+        updateQuantityAFOrderDto.setSku(inventoryEntity.getSku());
+        updateQuantityAFOrderDto.setQuantity(inventoryEntity.getQuantity());
+        return updateQuantityAFOrderDto;
+    }
+
+    public static InventoryEntity mapToInventoryEntity(UpdateQuantityAFOrderDto updateQuantityAFOrderDto, InventoryEntity inventoryEntity){
+        inventoryEntity.setSku(updateQuantityAFOrderDto.getSku());
+        inventoryEntity.setQuantity(updateQuantityAFOrderDto.getQuantity());
+        return inventoryEntity;
+    }
+}
+
+functions package has the following code :
 package com.service.inventorycatalogue.functions;
 /**
  * Consumes the message from message artifact of the queue message
@@ -192,38 +317,32 @@ public class InventoryFunctions {
     }
 }
 
+service package has the following code:
+package com.service.inventorycatalogue.service;
 
+import com.service.inventorycatalogue.dto.InventoryDto;
+import com.service.inventorycatalogue.dto.UpdateQuantityAFOrderDto;
+
+public interface IInventoryService {
+boolean reduceStock(UpdateQuantityAFOrderDto updateQuantityAFOrderDto, int quantity);
+
+boolean updateCommunication(String sku);
+}
+
+service.impl package has the following code:
 package com.service.inventorycatalogue.service.impl;
-
-/**
- * InventoryServiceImpl layer helps in performing CRUD operation and other business/
- * logic like sending communication
- *
- */
-
 import com.service.inventorycatalogue.dto.InventoryDto;
 import com.service.inventorycatalogue.dto.InventoryMsgDto;
 import com.service.inventorycatalogue.dto.UpdateQuantityAFOrderDto;
-import com.service.inventorycatalogue.entity.InventoryEntity;
-import com.service.inventorycatalogue.exception.ResourceNotFoundException;
-import com.service.inventorycatalogue.exception.SkuExistsException;
-import com.service.inventorycatalogue.mapper.InventoryMapper;
 import com.service.inventorycatalogue.mapper.UpdateQuantityAFOrderMapper;
 import com.service.inventorycatalogue.repository.InventoryRepository;
 import com.service.inventorycatalogue.service.IInventoryService;
-import lombok.AllArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.cloud.stream.function.StreamBridge;
-import org.springframework.stereotype.Service;
-
-import java.util.Optional;
-
+import com.service.inventorycatalogue.entity.InventoryEntity;
 @Service
 @AllArgsConstructor
 public class InventoryServiceImpl implements IInventoryService {
 
-@Override
+ @Override
     public boolean reduceStock(UpdateQuantityAFOrderDto updateQuantityAFOrderDto, int quantity) {
 
         boolean isOrdered = false;
@@ -277,56 +396,24 @@ public class InventoryServiceImpl implements IInventoryService {
         return isUpdated;
     }
 
-package com.service.inventorycatalogue.controller;
+    repository package has the following code :
+    package com.service.inventorycatalogue.repository;
 
 /**
-* Controller class
-*
-*/
+ * Repository layer helps in performing CRUD operation
+ *
+ */
 
-import com.service.inventorycatalogue.constants.InventoryConstants;
-import com.service.inventorycatalogue.dto.ErrorResponseDto;
-import com.service.inventorycatalogue.dto.InventoryDto;
-import com.service.inventorycatalogue.dto.ResponseDto;
-import com.service.inventorycatalogue.dto.UpdateQuantityAFOrderDto;
-import com.service.inventorycatalogue.service.IInventoryService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import com.service.inventorycatalogue.entity.InventoryEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-@Tag(
-        name = "CRUD Rest APIs of Inventory Management Service",
-        description = "CRUD Rest APIs in Inventory"
-)
-@RestController
-@RequestMapping(path="/api", produces = {MediaType.APPLICATION_JSON_VALUE})
-@Validated
-public class InventoryController {
-    controller 
+import java.util.Optional;
 
-     @PutMapping("/order")
-    public ResponseEntity<ResponseDto> placeOrder(@Valid @RequestBody UpdateQuantityAFOrderDto updateQuantityAFOrderDto, @RequestParam int quantity){
-        boolean orderPlaced = iInventoryService.reduceStock(updateQuantityAFOrderDto, quantity);
-        if(orderPlaced){
-            return  ResponseEntity
-                    .status(HttpStatus.OK)
-                    .body(new ResponseDto(InventoryConstants.STATUS_200, InventoryConstants.MESSAGE_200));
-        }else{
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ResponseDto(InventoryConstants.STATUS_500, InventoryConstants.MESSAGE_500));
-        }
-    }
+@Repository
+public interface InventoryRepository extends JpaRepository<InventoryEntity,Long> {
+    Optional<InventoryEntity> findBySku(String sku);
+}
 
-As you remember I was building the logic for inventory microservice feature where prodcut reduces to certain threshold then it should send message in a queue that the quantity of the product is reduced below threshold I have kept the threshold number to 10 in inventory management microservice. Now this logic is present in inventory management microservice once the product is reduced to 10 it will invoke the message spring boot project to send message in queue.
-Now the message springboot project and inventory management miscroservice are differnet project I need help here in how to create the lambda function in aws where the lambda function in aws should able to pick the functions from both message spring boot project and invenotry management microservice and it should get successful response 
+now analyse above both the application code written and help me in how can I create lambda function of message application,
+and how can create a message event driven SQS in aws how can a message can be invoked once the product quantity is less then 10 how can I create lambda function of message, sms. And consumer in consumer method of inventory microservice
