@@ -27,3 +27,178 @@ public class InventoryController extends RuntimeException{
 }
 
 now update your logic by including the controller code as well
+
+
+
+To create an AWS Lambda function for your message application and set up event-driven communication with SQS, we'll follow these steps:
+
+1. **Create Lambda Functions for `message` and `sms` in the Message Application:**
+   - Deploy the message Spring Boot application as an AWS Lambda function.
+   - Create an SQS queue for messages.
+   - Configure the Lambda function to be triggered by messages in the SQS queue.
+   - Implement the message sending and SMS functionality in the Lambda function.
+
+2. **Integrate Inventory Management Microservice with SQS:**
+   - Modify the inventory management microservice to send messages to the SQS queue when product quantity falls below the threshold.
+
+### Step 1: Create Lambda Functions for `message` and `sms` in the Message Application
+
+**1.1. Package the Message Application:**
+
+First, package your Spring Boot application into a JAR file.
+
+```sh
+mvn clean package
+```
+
+**1.2. Create a Lambda Function in AWS:**
+
+Go to the AWS Management Console and navigate to Lambda. Create a new Lambda function.
+
+- **Function name:** message-lambda
+- **Runtime:** Java 11 (or the version compatible with your Spring Boot application)
+- **Role:** Choose an existing role or create a new role with the necessary permissions (e.g., to write logs to CloudWatch, access SQS, etc.)
+
+**1.3. Upload the JAR File to AWS Lambda:**
+
+- Under the "Code" tab of your Lambda function, upload the packaged JAR file.
+- Set the handler to `com.amazonaws.serverless.proxy.spring.SpringBootLambdaContainerHandler::handleRequest`.
+
+**1.4. Create SQS Queue:**
+
+Go to the AWS Management Console and navigate to SQS. Create a new queue.
+
+- **Queue name:** message-queue
+
+**1.5. Add SQS Trigger to Lambda Function:**
+
+Go back to the Lambda function created in step 1.2 and add an SQS trigger.
+
+- **Queue:** Select the message-queue created in step 1.4.
+- **Batch size:** Set according to your needs.
+
+### Step 2: Integrate Inventory Management Microservice with SQS
+
+**2.1. Add AWS SDK Dependencies:**
+
+Add the AWS SDK dependencies to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>sqs</artifactId>
+</dependency>
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>regions</artifactId>
+</dependency>
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>auth</artifactId>
+</dependency>
+```
+
+**2.2. Configure AWS SDK:**
+
+Create a configuration class to configure the AWS SQS client.
+
+```java
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class AwsConfig {
+
+    @Bean
+    public SqsClient sqsClient() {
+        return SqsClient.builder()
+                .region(Region.US_EAST_1)
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+}
+```
+
+**2.3. Send Message to SQS in Inventory Service:**
+
+Modify your `sendCommunication` method in `InventoryServiceImpl` to send a message to the SQS queue.
+
+```java
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@AllArgsConstructor
+public class InventoryServiceImpl implements IInventoryService {
+
+    private final InventoryRepository inventoryRepository;
+    private final SqsClient sqsClient;
+    private final String queueUrl = "https://sqs.us-east-1.amazonaws.com/your-account-id/message-queue";
+
+    @Override
+    public boolean reduceStock(UpdateQuantityAFOrderDto updateQuantityAFOrderDto, int quantity) {
+        // existing code
+        if (savedInventoryQuantity.getQuantity() < 10) {
+            sendCommunication(savedInventoryQuantity);
+        }
+        return isOrdered;
+    }
+
+    private void sendCommunication(InventoryEntity inventoryEntity) {
+        var inventoryMsgDto = new InventoryMsgDto(inventoryEntity.getSku(),
+                inventoryEntity.getQuantity(), inventoryEntity.getCategory());
+        log.info("Sending Communication request for the details:{}", inventoryMsgDto);
+        SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
+                .queueUrl(queueUrl)
+                .messageBody(inventoryMsgDto.toString())
+                .build();
+        sqsClient.sendMessage(sendMessageRequest);
+        log.info("The Communication request successfully triggered");
+    }
+
+    @Override
+    public boolean updateCommunication(String sku) {
+        // existing code
+        return isUpdated;
+    }
+}
+```
+
+### Step 3: Handle the Message in the Lambda Function
+
+Update your `message` function to handle the message from the SQS queue.
+
+```java
+@Bean
+public Function<InventoryMsgDto, InventoryMsgDto> message() {
+    return inventoryMsgDto -> {
+        log.info("Quantity of a product is less than 10: " + inventoryMsgDto.toString());
+        return inventoryMsgDto;
+    };
+}
+
+@Bean
+public Function<InventoryMsgDto, String> sms() {
+    return inventoryMsgDto -> {
+        log.info("Sending sms with the details: " + inventoryMsgDto);
+        return inventoryMsgDto.sku();
+    };
+}
+```
+
+### Step 4: Deploy and Test
+
+1. Deploy the updated inventory management microservice.
+2. Deploy the message Lambda function.
+3. Place an order that reduces the quantity below 10.
+4. Verify that the message is sent to the SQS queue.
+5. Verify that the message Lambda function processes the message and logs the appropriate information.
+
+### Summary
+
+You have created a Spring Boot application that runs as an AWS Lambda function and uses SQS to handle communication between microservices. The inventory management microservice sends messages to an SQS queue when product quantity falls below a threshold, and the Lambda function processes these messages to log and send SMS notifications.
