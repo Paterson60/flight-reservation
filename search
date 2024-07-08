@@ -202,3 +202,200 @@ public Function<InventoryMsgDto, String> sms() {
 ### Summary
 
 You have created a Spring Boot application that runs as an AWS Lambda function and uses SQS to handle communication between microservices. The inventory management microservice sends messages to an SQS queue when product quantity falls below a threshold, and the Lambda function processes these messages to log and send SMS notifications.
+
+
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+
+  # S3 Bucket
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: 'my-springboot-app-bucket'
+
+  # EC2 Instance
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0abcdef1234567890 # Replace with a valid AMI ID for your region
+      KeyName: 'your-key-pair'       # Replace with your key pair name
+      SecurityGroups: 
+        - !Ref EC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: 'SpringBootAppEC2'
+
+  EC2SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  # IAM Role for Lambda
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'lambda.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'LambdaS3Policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                Resource: !Sub 'arn:aws:s3:::${S3Bucket}/*'
+              - Effect: Allow
+                Action:
+                  - 'logs:*'
+                Resource: '*'
+
+  # Lambda Function
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log('Event:', event);
+            return { statusCode: 200, body: 'Hello from Lambda!' };
+          };
+      Runtime: 'nodejs14.x'
+
+  # SQS Queue
+  SQSQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: 'my-springboot-app-queue'
+
+  # RDS Instance
+  RDSInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBName: 'mydb'
+      AllocatedStorage: '20'
+      DBInstanceClass: 'db.t2.micro'
+      Engine: 'mysql'
+      MasterUsername: 'admin'
+      MasterUserPassword: 'yourpassword'
+      VPCSecurityGroups: 
+        - !GetAtt RDSSecurityGroup.GroupId
+
+  RDSSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable MySQL access
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+
+  # Elastic Beanstalk Application
+  ElasticBeanstalkApplication:
+    Type: 'AWS::ElasticBeanstalk::Application'
+    Properties:
+      ApplicationName: 'my-springboot-app'
+      Description: 'Spring Boot application'
+
+  # Elastic Beanstalk Environment
+  ElasticBeanstalkEnvironment:
+    Type: 'AWS::ElasticBeanstalk::Environment'
+    Properties:
+      EnvironmentName: 'my-springboot-app-env'
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      SolutionStackName: '64bit Amazon Linux 2 v5.4.4 running Corretto 11'
+      OptionSettings:
+        - Namespace: 'aws:elasticbeanstalk:application:environment'
+          OptionName: 'SPRING_PROFILES_ACTIVE'
+          Value: 'default'
+
+  # API Gateway
+  ApiGatewayRestApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: 'MySpringBootApi'
+      Description: 'API Gateway for Spring Boot Application'
+
+  ApiGatewayResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !GetAtt ApiGatewayRestApi.RootResourceId
+      PathPart: 'hello'
+      RestApiId: !Ref ApiGatewayRestApi
+
+  ApiGatewayMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      AuthorizationType: 'NONE'
+      HttpMethod: 'GET'
+      ResourceId: !Ref ApiGatewayResource
+      RestApiId: !Ref ApiGatewayRestApi
+      Integration:
+        IntegrationHttpMethod: 'POST'
+        Type: 'AWS_PROXY'
+        Uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+
+  ApiGatewayDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref ApiGatewayRestApi
+      StageName: 'dev'
+
+  # VPC
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vpc'
+
+Outputs:
+  S3BucketName:
+    Description: 'Name of the S3 bucket'
+    Value: !Ref S3Bucket
+
+  EC2InstanceId:
+    Description: 'ID of the EC2 instance'
+    Value: !Ref EC2Instance
+
+  LambdaFunctionName:
+    Description: 'Name of the Lambda function'
+    Value: !Ref LambdaFunction
+
+  SQSQueueUrl:
+    Description: 'URL of the SQS queue'
+    Value: !Ref SQSQueue
+
+  RDSInstanceEndpoint:
+    Description: 'Endpoint of the RDS instance'
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  ElasticBeanstalkEnvironmentUrl:
+    Description: 'URL of the Elastic Beanstalk environment'
+    Value: !GetAtt ElasticBeanstalkEnvironment.EndpointURL
+
+  ApiGatewayUrl:
+    Description: 'Invoke URL of the API Gateway'
+    Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/dev/hello'
