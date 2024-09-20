@@ -35,3 +35,58 @@
                         .message(HttpStatus.OK.getReasonPhrase())
                         .build());
     }
+
+
+
+I'd be glad to provide a Java code that integrates the updateQualifications method into the createLogInteractionWithActions method, considering the specific context and requirements you've mentioned:
+@PostMapping(value = "/customers/{customer-id}/log-interactions", produces = {MediaType.APPLICATION_JSON_VALUE})
+public ResponseEntity<GenericResponse> createLogInteractionWithActions(
+        @PathVariable("customer-id") String customerId,
+        @RequestBody @NonNull CreateLogInteraction createLogInteraction) {
+
+    // ... (existing validation and log interaction creation logic)
+
+    // Check if the account number exists in the createLogInteraction
+    String accountNumber = createLogInteraction.getAccountNumber();
+    if (accountNumber != null) {
+        // Construct the URI for the updateQualifications endpoint
+        String updateQualificationsUri = "http://localhost:8080/accounts/" + accountNumber + "/qualifications";
+
+        // Call the updateQualifications endpoint asynchronously
+        Mono<GenericResponse> updateQualificationsResponse = webClient.post()
+                .uri(updateQualificationsUri)
+                .body(Mono.just(qualificationsUpdateData), QualificationsUpdateData.class)
+                .retrieve()
+                .bodyToMono(GenericResponse.class);
+
+        // Handle the response from updateQualifications (e.g., log success/failure)
+        updateQualificationsResponse.subscribe(response -> {
+            if (response.getStatusCode() == HttpStatus.OK) {
+                LOGGER.info("Qualifications updated successfully for account: {}", accountNumber);
+            } else {
+                LOGGER.error("Failed to update qualifications for account: {}", accountNumber);
+            }
+        }, error -> {
+            LOGGER.error("Error updating qualifications: {}", error.getMessage());
+        });
+    }
+
+    // Return the response for creating the log interaction
+    return ResponseEntity.status(HttpStatus.CREATED)
+            .body(new GenericResponse<>(CreateLogInteractionResponseStatus.OK));
+}
+
+Explanation:
+ * Check Account Number: Before calling updateQualifications, check if the accountNumber is present in the createLogInteraction object. If it's not, skip the update.
+ * Construct URI: If the account number exists, construct the URI for the updateQualifications endpoint using the provided account number.
+ * Asynchronous Call: Use WebClient to make an asynchronous POST request to the updateQualifications endpoint, sending the necessary update data.
+ * Handle Response: Subscribe to the response to handle success or failure cases. You can log appropriate messages or take other actions based on the response status.
+ * Return Original Response: Return the original response for creating the log interaction, indicating that the operation was successful, regardless of whether the qualifications update was successful.
+Key Points:
+ * The updateQualifications call is made asynchronously to avoid blocking the main thread.
+ * You can customize the error handling and logging logic based on your specific requirements.
+ * Ensure that the qualificationsUpdateData object contains the correct data for updating qualifications.
+ * This code assumes you have a WebClient instance configured and accessible within your application.
+By following these steps, you can effectively integrate the updateQualifications endpoint into the createLogInteractionWithActions method, ensuring that qualifications are updated whenever a new log interaction is created and the account number is provided.
+
+
