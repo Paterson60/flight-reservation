@@ -280,3 +280,58 @@ public class CustomerInteractionOfflineController {
                         .build());
     }
 }
+
+
+
+
+
+@RestController
+@CrossOrigin
+@RequestMapping("/v1")
+@Slf4j
+public class CustomerInteractionOfflineController {
+
+    @Autowired
+    private EventController eventController; // Injecting the EventController
+
+    // Other autowired services and fields...
+
+    @PostMapping(value = "/customers/{customer-id}/log-interactions", produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<GenericResponse<ResponseStatus>> createLogInteractionWithActions(
+            @PathVariable("customer-id") String customerId,
+            @RequestBody @NonNull CreateLogInteraction createLogInteraction) {
+        
+        // Validate interaction request...
+        if (Boolean.FALSE.equals(interactionService.validCreateInteractionResponse(customerId, createLogInteraction))) {
+            return ResponseEntity.badRequest().body(GenericResponse.<ResponseStatus>builder()
+                    .requestId(MDC.get(REQUEST_ID))
+                    .message("Bad create log interaction request")
+                    .build());
+        }
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Request received to create log interaction for customerId: {}", customerId);
+        }
+
+        // Handle main interaction logic...
+        ResponseStatus logInteractionResponse = interactionService.createLogInteraction(customerId, createLogInteraction,
+                Boolean.TRUE.equals(createLogInteraction.getEmailForm().getSendEmail())
+                        ? service.getCustomerInfo(createLogInteraction.getCustomerId(), "6000",
+                        createLogInteraction.getUserRole(), createLogInteraction.getLoginId())
+                        : null);
+
+        // Call the createEvents method from the injected EventController
+        CreateEvent event = new CreateEvent(); // Prepare your CreateEvent object
+        ResponseEntity<GenericResponse<CreateEventResponseStatus>> eventResponse = eventController.createEvents(event);
+        
+        // Other method calls as needed...
+
+        return ResponseEntity.ok(GenericResponse.<ResponseStatus>builder()
+                .data(logInteractionResponse)
+                .requestId(MDC.get(REQUEST_ID))
+                .message(HttpStatus.OK.getReasonPhrase())
+                .build());
+    }
+
+    // Other methods...
+}
