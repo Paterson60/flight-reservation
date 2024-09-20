@@ -90,3 +90,71 @@ Key Points:
 By following these steps, you can effectively integrate the updateQualifications endpoint into the createLogInteractionWithActions method, ensuring that qualifications are updated whenever a new log interaction is created and the account number is provided.
 
 
+
+gtp
+@PostMapping(value = "/customers/{customer-id}/log-interactions", produces = {MediaType.APPLICATION_JSON_VALUE})
+public ResponseEntity<GenericResponse> createLogInteractionWithActions(
+        @PathVariable("customer-id") String customerId, 
+        @RequestBody @NonNull CreateLogInteraction createLogInteraction) {
+
+    // Validate the create interaction request
+    if (Boolean.FALSE.equals(interactionService.validCreateInteractionResponse(customerId, createLogInteraction))) {
+        return ResponseEntity.badRequest().body(GenericResponse.builder()
+                .requestId(MDC.get(REQUEST_ID))
+                .message("Bad create log interaction request")
+                .build());
+    } else {
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug("Request received to create log interaction for customerId : {}", customerId);
+
+        // Create log interaction
+        GenericResponse interactionResponse = GenericResponse.builder()
+            .data(interactionService.createLogInteraction(
+                customerId, 
+                createLogInteraction, 
+                Boolean.TRUE.equals(createLogInteraction.getEmailForm().getSendEmail()) 
+                    ? service.getCustomerInfo(createLogInteraction.getCustomerId(), "6000", 
+                        createLogInteraction.getUserRole(), createLogInteraction.getLoginId()) 
+                    : null))
+            .requestId(MDC.get(REQUEST_ID))
+            .message(HttpStatus.OK.getReasonPhrase())
+            .build();
+
+        // Logic to check if qualifications should be updated
+        if (shouldUpdateQualifications(createLogInteraction)) {
+            if (LOGGER.isDebugEnabled()) 
+                LOGGER.debug("Updating qualifications for account number: {}", createLogInteraction.getAccountNumber());
+            
+            QualificationsUpdateRequest qualificationsUpdateData = buildQualificationsUpdateRequest(createLogInteraction);
+
+            // Call the updateQualifications method here
+            ResponseEntity<GenericResponse> qualificationResponse = updateQualifications(
+                createLogInteraction.getAccountNumber(), qualificationsUpdateData);
+
+            if (!qualificationResponse.getStatusCode().is2xxSuccessful()) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(GenericResponse.builder()
+                        .requestId(MDC.get(REQUEST_ID))
+                        .message("Failed to update qualifications")
+                        .build());
+            }
+        }
+
+        // Return the response for creating the log interaction
+        return ResponseEntity.ok(interactionResponse);
+    }
+}
+
+// Example method to decide when to update qualifications
+private boolean shouldUpdateQualifications(CreateLogInteraction createLogInteraction) {
+    // Implement logic to determine whether qualifications need to be updated
+    return createLogInteraction.isUpdateQualifications(); // Placeholder condition
+}
+
+// Example method to build the QualificationsUpdateRequest object
+private QualificationsUpdateRequest buildQualificationsUpdateRequest(CreateLogInteraction createLogInteraction) {
+    // Build and return the QualificationsUpdateRequest object based on the interaction details
+    QualificationsUpdateRequest request = new QualificationsUpdateRequest();
+    // Set the necessary fields from createLogInteraction
+    return request;
+}
+
