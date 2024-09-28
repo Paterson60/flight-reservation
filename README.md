@@ -1,55 +1,29 @@
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
+@PostMapping(value = "/customers/{customer-id}/log-interactions-offline", produces = {MediaType.APPLICATION_JSON_VALUE})
+    public void createLogInteractionOffline(@PathVariable("customer-id") String customerId,
+                                            @RequestParam(value = "planId",required = false) String planId,
+                                            @RequestBody @NonNull LogInteractionOfflineRequestWrapper logInteractionOfflineRequestWrapper) {
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
-
-public class InteractionServiceImplOfflineTest {
-
-    @Mock
-    private WebClient calendarClient;
-
-    @InjectMocks
-    private InteractionServiceImplOffline interactionService;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
+        try {
+            if (logInteractionOfflineRequestWrapper.getLogInteraction() != null) {
+                createLogInteraction(customerId, logInteractionOfflineRequestWrapper.getLogInteraction());
+            }
+            if (logInteractionOfflineRequestWrapper.getRequests() != null && logInteractionOfflineRequestWrapper.getRequests()
+			.getUpdateCustomerQuestions() != null && logInteractionOfflineRequestWrapper.getRequests().getUpdateCustomerQuestions().getHighDiscovery() != null) {
+                ResponseStatus updateHighDiscoveryResponse = customerKycController.updateHighdiscoveryQues(logInteractionOfflineRequestWrapper.getRequests()
+				.getUpdateCustomerQuestions().getHighDiscovery()).getBody().getData();
+            }
+            if (logInteractionOfflineRequestWrapper.getRequests().getUpdateCustomerQuestions() != null && logInteractionOfflineRequestWrapper.getRequests()
+			.getUpdateCustomerQuestions().getUpdateQualifications() != null) {
+                ResponseStatus updateQualificationsResponse = customerQualificationController.updateQualifications(logInteractionOfflineRequestWrapper
+				.getLogInteraction().getAccountNumber(), logInteractionOfflineRequestWrapper.getRequests().getUpdateCustomerQuestions()
+				.getUpdateQualifications()).getBody().getData();
+            }
+            if (logInteractionOfflineRequestWrapper.getRequests().getUpdateCustomerQuestions() != null && logInteractionOfflineRequestWrapper.getRequests()
+			.getUpdateCustomerQuestions().getCustomerPreferences() != null) {
+                CustomerPreferencesResponseStatus customerPreferencesResponse = preferencesController.updatePreferencesData(logInteractionOfflineRequestWrapper.getRequests()
+				.getUpdateCustomerQuestions().getCustomerPreferences()).getBody().getData();
+            }
+            interactionServiceImplOffline.createLogInteractionOffline(planId,logInteractionOfflineRequestWrapper);
+        } catch (Exception e) {
+            throw new RuntimeException(StringUtils.join(" An error occurred while completing offline functionality for log interactions:",e.getMessage()),e);
     }
-
-    @Test
-    void testCreateLogInteractionOffline() {
-        // Define test data
-        String planId = "test-plan-id";
-        LogInteractionOfflineRequestWrapper requestWrapper = new LogInteractionOfflineRequestWrapper();
-        requestWrapper.setLoginId("test-login-id");
-
-        // Mocking WebClient behavior
-        WebClient.RequestBodyUriSpec requestBodyUriSpec = mock(WebClient.RequestBodyUriSpec.class);
-        WebClient.RequestHeadersSpec requestHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
-        WebClient.RequestHeadersUriSpec requestHeadersUriSpec = mock(WebClient.RequestHeadersUriSpec.class);
-        WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
-
-        when(calendarClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.accept(any())).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.contentType(any())).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.body(any())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(any(Class.class))).thenReturn(Mono.just(new GenericResponse<>()));
-
-        // Call the method
-        interactionService.createLogInteractionOffline(planId, requestWrapper);
-
-        // Verify the method call
-        verify(calendarClient.post(), times(1)).uri(anyString());
-        verify(requestBodyUriSpec, times(1)).accept(any());
-        verify(requestBodyUriSpec, times(1)).contentType(any());
-        verify(requestHeadersSpec, times(1)).retrieve();
-    }
-}
