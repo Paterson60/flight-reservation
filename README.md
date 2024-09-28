@@ -102,3 +102,14 @@ public class CustomerControllerTest {
         verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(eq("test-plan-id"), any(LogInteractionOfflineRequestWrapper.class));
     }
 }
+
+
+// Replace GenericResponse with a similar mock class or use a simpler structure that matches the return type.
+ResponseEntity<Object> mockHighDiscoveryResponse = ResponseEntity.ok(mockResponseStatus);
+ResponseEntity<Object> mockQualificationsResponse = ResponseEntity.ok(mockResponseStatus);
+ResponseEntity<Object> mockCustomerPreferencesResponse = ResponseEntity.ok(mockPreferencesResponseStatus);
+
+// Use the mock responses instead of new GenericResponse<>()
+when(customerKycController.updateHighdiscoveryQues(any())).thenReturn(mockHighDiscoveryResponse);
+when(customerQualificationController.updateQualifications(anyString(), any())).thenReturn(mockQualificationsResponse);
+when(preferencesController.updatePreferencesData(any())).thenReturn(mockCustomerPreferencesResponse);
