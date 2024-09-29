@@ -113,3 +113,66 @@ ResponseEntity<Object> mockCustomerPreferencesResponse = ResponseEntity.ok(mockP
 when(customerKycController.updateHighdiscoveryQues(any())).thenReturn(mockHighDiscoveryResponse);
 when(customerQualificationController.updateQualifications(anyString(), any())).thenReturn(mockQualificationsResponse);
 when(preferencesController.updatePreferencesData(any())).thenReturn(mockCustomerPreferencesResponse);
+
+
+
+
+
+
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+public class LogInteractionServiceImplTest {
+
+    @InjectMocks
+    private LogInteractionServiceImpl logInteractionServiceImpl;
+
+    @Mock
+    private CustomerRepository customerRepository;
+
+    @Mock
+    private InteractionRepository interactionRepository;
+
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    public void testCreateLogInteractionOffline_Success() {
+        // Arrange
+        String customerId = "12345";
+        String planId = "plan123";
+        LogInteractionOfflineRequestWrapper requestWrapper = new LogInteractionOfflineRequestWrapper();
+        requestWrapper.setInteractionId("interaction1");
+        
+        // Mocking dependencies
+        when(interactionRepository.save(any())).thenReturn(new Interaction());
+
+        // Act
+        logInteractionServiceImpl.createLogInteractionOffline(customerId, planId, requestWrapper);
+
+        // Assert
+        verify(interactionRepository, times(1)).save(any());
+    }
+
+    @Test
+    public void testCreateLogInteractionOffline_NullInteraction() {
+        // Arrange
+        String customerId = "12345";
+        String planId = "plan123";
+        LogInteractionOfflineRequestWrapper requestWrapper = new LogInteractionOfflineRequestWrapper();
+
+        // Act & Assert
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            logInteractionServiceImpl.createLogInteractionOffline(customerId, planId, requestWrapper);
+        });
+
+        assertEquals("An error occurred while completing offline functionality for log interactions:", exception.getMessage());
+    }
+}
