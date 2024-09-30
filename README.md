@@ -128,3 +128,80 @@ interactionServiceImplOffline.createLogInteractionOffline(
 );
 -> at com.sherwinwilliams.service.domain.service.impl.InteractionServiceImplOffline.createLogInteractionOffline(InteractionServiceImplOffline.java:31)
 Actually, there were zero interactions with this mock.
+
+
+
+
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.junit.jupiter.api.extension.ExtendWith;
+
+@ExtendWith(SpringExtension.class)
+@SpringBootTest
+public class CustomerControllerTest {
+
+    @Mock
+    private CustomerKycController customerKycController;
+
+    @Mock
+    private CustomerQualificationController customerQualificationController;
+
+    @Mock
+    private PreferencesController preferencesController;
+
+    @Mock
+    private InteractionServiceImplOffline interactionServiceImplOffline;
+
+    @InjectMocks
+    private CustomerController customerController;
+
+    @Test
+    public void testCreateLogInteractionOffline() {
+        // Sample data setup
+        String customerId = "customerId";
+        String planId = "planId";
+
+        // Create a request wrapper with necessary mock data
+        LogInteractionOfflineRequestWrapper requestWrapper = new LogInteractionOfflineRequestWrapper();
+
+        CreateLogInteraction createLogInteraction = mock(CreateLogInteraction.class);
+        requestWrapper.setLogInteraction(createLogInteraction);
+
+        LogInteractionOfflineRequest logInteractionOfflineRequest = mock(LogInteractionOfflineRequest.class);
+        requestWrapper.setRequests(logInteractionOfflineRequest);
+
+        // Mock updateHighdiscoveryQues response
+        ResponseStatus searchResponse = new ResponseStatus();
+        searchResponse.setMessage("updated Successfully");
+        searchResponse.setStatus(200);
+        when(customerKycController.updateHighdiscoveryQues(any())).thenReturn(new ResponseEntity<>(new GenericResponse<>(searchResponse), HttpStatus.OK));
+
+        // Mock updateQualifications response
+        ResponseStatus qualificationsResponse = new ResponseStatus();
+        qualificationsResponse.setStatus(200);
+        qualificationsResponse.setMessage("Successful");
+        when(customerQualificationController.updateQualifications(anyString(), any())).thenReturn(new ResponseEntity<>(new GenericResponse<>(qualificationsResponse), HttpStatus.OK));
+
+        // Mock updatePreferencesData response
+        CustomerPreferencesResponseStatus preferencesResponse = new CustomerPreferencesResponseStatus();
+        CustomerPreferencesUpdateQuestions prefUpdateQuestions = new CustomerPreferencesUpdateQuestions();
+        prefUpdateQuestions.setQuestionId("1234");
+        prefUpdateQuestions.setStatus(200);
+        prefUpdateQuestions.setMessage("Updated to DB Successfully");
+        preferencesResponse.setCustomerPreferencesUpdateQuestions(List.of(prefUpdateQuestions));
+        when(preferencesController.updatePreferencesData(any())).thenReturn(new ResponseEntity<>(new GenericResponse<>(preferencesResponse), HttpStatus.OK));
+
+        // Call the method under test
+        customerController.createLogInteractionOffline(customerId, planId, requestWrapper);
+
+        // Verify that interactionServiceImplOffline.createLogInteractionOffline() was called once with the expected parameters
+        verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(planId, requestWrapper);
+    }
+}
