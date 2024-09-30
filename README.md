@@ -117,3 +117,14 @@ String customerId = "customerId";
         assertEquals("1234", prefresponse.getBody().getData().getCustomerPreferencesUpdateQuestions().get(0).getQuestionId());
 
         verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(planId, requestWrapper);
+
+
+
+        
+Wanted but not invoked:
+interactionServiceImplOffline.createLogInteractionOffline(
+    "planId",
+    LogInteractionOfflineRequestWrapper(logInteraction=Mock for CreateLogInteraction, hashCode: 347136295, requests=Mock for LogInteractionOfflineRequest, hashCode: 1091597918)
+);
+-> at com.sherwinwilliams.service.domain.service.impl.InteractionServiceImplOffline.createLogInteractionOffline(InteractionServiceImplOffline.java:31)
+Actually, there were zero interactions with this mock.
