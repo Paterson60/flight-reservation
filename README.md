@@ -205,3 +205,103 @@ public class CustomerControllerTest {
         verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(eq(planId), any(LogInteractionOfflineRequestWrapper.class));
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.reactive.function.client.WebClient;
+
+@ExtendWith(MockitoExtension.class)
+public class CustomerControllerTest {
+
+    @InjectMocks
+    private CustomerController customerController;
+
+    @Mock
+    private InteractionServiceImplOffline interactionServiceImplOffline;
+
+    @Mock
+    private CustomerKycController customerKycController;
+
+    @Mock
+    private CustomerQualificationController customerQualificationController;
+
+    @Mock
+    private PreferencesController preferencesController;
+
+    private LogInteractionOfflineRequestWrapper requestWrapper;
+    private String customerId;
+    private String planId;
+
+    @BeforeEach
+    void setUp() {
+        customerId = "12345";
+        planId = "67890";
+        
+        // Initialize request wrapper with dummy data
+        requestWrapper = new LogInteractionOfflineRequestWrapper();
+        CreateLogInteraction logInteraction = new CreateLogInteraction();
+        logInteraction.setLoginId("user123");
+        logInteraction.setAccountNumber("acc123");
+        requestWrapper.setLogInteraction(logInteraction);
+
+        LogInteractionOfflineRequest request = new LogInteractionOfflineRequest();
+        request.setCreateEvent(new CreateEvent());
+        requestWrapper.setRequests(request);
+
+        // Mock responses for dependent services
+        when(customerKycController.updateHighdiscoveryQues(any())).thenReturn(ResponseEntity.ok(new GenericResponse<>()));
+        when(customerQualificationController.updateQualifications(any(), any())).thenReturn(ResponseEntity.ok(new GenericResponse<>()));
+        when(preferencesController.updatePreferencesData(any())).thenReturn(ResponseEntity.ok(new GenericResponse<>()));
+    }
+
+    @Test
+    public void testCreateLogInteractionOffline_withValidData() {
+        // Act
+        customerController.createLogInteractionOffline(customerId, planId, requestWrapper);
+
+        // Assert
+        verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(eq(planId), eq(requestWrapper));
+        verify(customerKycController, times(1)).updateHighdiscoveryQues(any());
+        verify(customerQualificationController, times(1)).updateQualifications(anyString(), anyList());
+        verify(preferencesController, times(1)).updatePreferencesData(any());
+    }
+
+    @Test
+    public void testCreateLogInteractionOffline_withNullPlanId() {
+        // Act
+        customerController.createLogInteractionOffline(customerId, null, requestWrapper);
+
+        // Assert
+        verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(eq(null), eq(requestWrapper));
+    }
+
+    @Test
+    public void testCreateLogInteractionOffline_whenExceptionOccurs() {
+        // Mock an exception scenario
+        doThrow(new RuntimeException("Test exception")).when(interactionServiceImplOffline).createLogInteractionOffline(anyString(), any());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () -> customerController.createLogInteractionOffline(customerId, planId, requestWrapper));
+    }
+}
