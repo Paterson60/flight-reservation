@@ -305,3 +305,35 @@ public class CustomerControllerTest {
         assertThrows(RuntimeException.class, () -> customerController.createLogInteractionOffline(customerId, planId, requestWrapper));
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+@Test
+public void testCreateLogInteractionOffline_withValidData() {
+    // Mock GenericResponse
+    GenericResponse<ResponseStatus> mockedHighDiscoveryResponse = mock(GenericResponse.class);
+    GenericResponse<ResponseStatus> mockedQualificationsResponse = mock(GenericResponse.class);
+    GenericResponse<CustomerPreferencesResponseStatus> mockedPreferencesResponse = mock(GenericResponse.class);
+
+    // Mock dependencies
+    when(customerKycController.updateHighdiscoveryQues(any())).thenReturn(ResponseEntity.ok(mockedHighDiscoveryResponse));
+    when(customerQualificationController.updateQualifications(any(), any())).thenReturn(ResponseEntity.ok(mockedQualificationsResponse));
+    when(preferencesController.updatePreferencesData(any())).thenReturn(ResponseEntity.ok(mockedPreferencesResponse));
+
+    // Act
+    customerController.createLogInteractionOffline(customerId, planId, requestWrapper);
+
+    // Assert
+    verify(interactionServiceImplOffline, times(1)).createLogInteractionOffline(eq(planId), eq(requestWrapper));
+    verify(customerKycController, times(1)).updateHighdiscoveryQues(any());
+    verify(customerQualificationController, times(1)).updateQualifications(anyString(), anyList());
+    verify(preferencesController, times(1)).updatePreferencesData(any());
+}
